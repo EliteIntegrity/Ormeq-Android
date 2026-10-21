@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.NoTitleBar.Fullscreen">
+        <!-- Ormeq's own canvas colour behind the game, including any camera-cutout margin. -->
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

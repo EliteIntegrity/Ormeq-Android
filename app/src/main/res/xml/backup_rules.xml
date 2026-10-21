@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Back up the player's files only; the installed game files come from the app itself. -->
+<full-backup-content>
+    <include domain="file" path="lib/user/" />
+    <include domain="file" path="lib/save/" />
+    <include domain="file" path="lib/apex/" />
+</full-backup-content>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Back up and transfer the player's files only; the installed game files come from the app itself. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="lib/user/" />
+        <include domain="file" path="lib/save/" />
+        <include domain="file" path="lib/apex/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="lib/user/" />
+        <include domain="file" path="lib/save/" />
+        <include domain="file" path="lib/apex/" />
+    </device-transfer>
+</data-extraction-rules>

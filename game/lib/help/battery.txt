@@ -1,0 +1,21 @@
+<style:title>Battery Life on Phones and Tablets</style>
+
+Between turns Ormeq waits for you, and while it waits it does almost nothing -- unless one of a few settings keeps it busy. These were measured on a Samsung Galaxy Tab S3 from 2016. A newer phone or tablet spends less on each, but the same settings matter most. They are all under <color:y>Menu</color> > <color:y>Settings</color>.
+
+<topic:Ambience><style:heading>Ambience</style>
+
+The background ambience plays the whole time you are in the game. Keeping it going takes about a tenth of one processor core, and keeps the sound hardware awake throughout. Switch <color:U>Sound</color> > <color:U>Ambience</color> off, and underground (or with the weather off) the game uses nothing at all while it waits; the sound hardware sleeps between sounds. Sound effects cost nothing between sounds. The title music costs about the same as the ambience, but only on the title screen.
+
+<topic:Weather><style:heading>Weather</style>
+
+On the surface, rain and snow are drawn about twenty times a second, and that is the biggest drain the game has: about a third of one processor core in ASCII or Hybrid, and nearly half in Full Tile. Set <color:U>Weather</color> to <color:U>Off</color> and the surface is as quiet as the dungeon, which has no weather. Whatever the setting, the weather stops after a minute without a touch, and starts again with the next one.
+
+<topic:Map><style:heading>Map presentation</style>
+
+ASCII and Hybrid cost the same. Full Tile costs more, but only while something on the map is moving -- in practice, the weather. Between turns nothing is drawn, so then every mode costs the same, and <color:U>Tile detail</color> (32 x 32 or 64 x 64) makes no difference to the battery at all.
+
+<topic:Longest><style:heading>For the longest battery life</style>
+
+    <color:G>Ambience off</color>, so the game is idle between turns.
+    <color:G>Weather off</color>, or play underground.
+    <color:G>ASCII or Hybrid</color>, if you keep the weather.

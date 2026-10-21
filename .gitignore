@@ -1,0 +1,29 @@
+# Gradle / Android Studio
+.gradle/
+build/
+.cxx/
+.externalNativeBuild/
+local.properties
+.idea/
+*.iml
+captures/
+.kotlin/
+
+# Third-party sources, fetched at pinned revisions by tools/fetch-deps.*
+/third_party/
+
+# A maintainer's own private names for tools/check_source.py
+/tools/private-patterns.txt
+
+# Release signing (keystore.properties names a key kept outside the repository)
+keystore.properties
+*.jks
+*.keystore
+
+# OS and editor clutter
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Python
+__pycache__/
