@@ -56,6 +56,12 @@ object ContextFlags {
     const val PAGE_RANDOM = 2048
     /** A page of character creation showing the race and class summary, which Tab steps through. */
     const val PAGE_MORE_INFO = 4096
+    /** One of the game's menus, with a lit row: the d-pad moves it, OK chooses it. */
+    const val MENU_LIST = 8192
+    /** ...where right chooses the lit row, not Return (character creation). */
+    const val MENU_RIGHT = 16384
+    /** A page of text (help, a character sheet): OK closes it. */
+    const val TEXT_PAGE = 32768
 }
 
 /** ITEM detail bits: what the item prompt offers (keep in step with android/ormeq-android.h). */
@@ -145,7 +151,14 @@ data class Cluster(val primary: Command?, val quick: List<Command?>)
  * [walks]: held at the command prompt, a direction walks, at a pace a thumb can
  * stop. [centre]: what a tap on the centre does, said faintly there (Wait).
  */
-data class Dpad(val visible: Boolean, val walks: Boolean = false, val label: String? = null, val centre: String? = null)
+/** [list]: a menu's, whose up and down move its lit row (arrow keys) and nothing else. */
+data class Dpad(
+    val visible: Boolean,
+    val walks: Boolean = false,
+    val label: String? = null,
+    val centre: String? = null,
+    val list: Boolean = false,
+)
 
 object ControlLayouts {
     /** A command at the command prompt, in the original keyset whatever keymaps say. */
@@ -194,7 +207,17 @@ object ControlLayouts {
     /** Again: the game's own "repeat the last command", with every choice it made. */
     val again = cmd("Again", 'n')
 
-    fun dpad(context: GameContext): Dpad = when (context.mode) {
+    fun dpad(context: GameContext): Dpad = when {
+        // A menu, and the race and class lists: up and down move the lit
+        // row, which OK chooses (Ammerow's way; android/context.c lights one).
+        movesLitRow(context) -> Dpad(visible = true, list = true)
+        else -> modeDpad(context)
+    }
+
+    private fun movesLitRow(context: GameContext) = context.has(ContextFlags.MENU_LIST) ||
+        (context.mode == ControlMode.NONE && context.has(ContextFlags.BIRTH) && context.has(ContextFlags.PAGE_CURSOR))
+
+    private fun modeDpad(context: GameContext): Dpad = when (context.mode) {
         // The centre waits a turn; held, it keeps waiting (TouchControlsView).
         ControlMode.MAP -> Dpad(visible = true, walks = true, centre = "Wait")
         ControlMode.AIM -> Dpad(visible = true, label = "fire")
@@ -363,24 +386,41 @@ object ControlLayouts {
                 listOf(key("Leave", Keys.ESCAPE), key(if (home) "Stash" else "Sell", 's'), key("Info", 'x')),
             )
         }
-        ControlMode.MENU -> Cluster(ok, listOf(back, key("PgUp", Keys.PAGE_UP), key("PgDn", Keys.PAGE_DOWN)))
-        // Character creation: a tap on a row chooses it, and the cluster has
-        // only what the page offers besides (android/context.c). OK where the
-        // page takes Return: to go on, or to choose the race or class it has
-        // lit. A page that is a list to choose from has Back as its large
-        // button, as an item list does. Random where "*" is listed; Info
-        // (Tab, "More Info") wherever the race and class summary is shown.
-        ControlMode.NONE -> if (context.has(ContextFlags.BIRTH)) {
-            val random = if (context.has(ContextFlags.PAGE_RANDOM)) key("Random", '*') else null
-            val info = if (context.has(ContextFlags.PAGE_MORE_INFO)) key("Info", '\t') else null
-            if (context.has(ContextFlags.PAGE_RETURN) || context.has(ContextFlags.PAGE_CURSOR)) {
-                Cluster(ok, listOf(back, random, info))
-            } else {
-                Cluster(back, listOf(null, random, info))
-            }
-        } else {
-            Cluster(ok, listOf(back, null, null))
+        ControlMode.MENU -> Cluster(menuOk(context), listOf(back, key("PgUp", Keys.PAGE_UP), key("PgDn", Keys.PAGE_DOWN)))
+        ControlMode.NONE -> when {
+            context.has(ContextFlags.TEXT_PAGE) ->
+                Cluster(menuOk(context), listOf(back, key("PgUp", Keys.PAGE_UP), key("PgDn", Keys.PAGE_DOWN)))
+            context.has(ContextFlags.BIRTH) -> birthCluster(context)
+            else -> Cluster(menuOk(context), listOf(back, null, null))
         }
+    }
+
+    /**
+     * OK chooses: in a menu, the lit row (Return, or right on a page of
+     * character creation, where Return belongs to the page); on a page of
+     * text it closes the page, which is all there is to do there
+     * (android/context.c). It never does nothing: in 0.1.0 an OK that did
+     * nothing made character creation look frozen.
+     */
+    private fun menuOk(context: GameContext) = when {
+        context.has(ContextFlags.MENU_RIGHT) -> key("OK", Keys.RIGHT)
+        context.has(ContextFlags.TEXT_PAGE) -> key("OK", Keys.ESCAPE)
+        else -> ok
+    }
+
+    /**
+     * Character creation: a tap on a row chooses it, and OK chooses the lit
+     * row of a list, as the d-pad moves it; on the pages that go on with
+     * Return (the summary and the stats), OK goes on, as their footers say.
+     * Random where "*" is listed; Info (Tab, "More Info") wherever the race
+     * and class summary is shown (android/context.c).
+     */
+    private fun birthCluster(context: GameContext): Cluster {
+        val random = if (context.has(ContextFlags.PAGE_RANDOM)) key("Random", '*') else null
+        val info = if (context.has(ContextFlags.PAGE_MORE_INFO)) key("Info", '\t') else null
+        val chooses = context.has(ContextFlags.PAGE_RETURN) || context.has(ContextFlags.PAGE_CURSOR) ||
+            context.has(ContextFlags.MENU_LIST)
+        return if (chooses) Cluster(menuOk(context), listOf(back, random, info)) else Cluster(back, listOf(null, random, info))
     }
 
     /**

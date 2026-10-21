@@ -95,6 +95,13 @@ target_include_directories(main PRIVATE "${GAME}/src")
 target_compile_definitions(main PRIVATE
     USE_SDL3 DISABLE_WIZARD HAVE_MKDIR HAVE_MKSTEMP ORMEQ_AUDIO_OGG)
 
+# An Android-only update's revision (ormeq.androidRevision, gradle.properties),
+# which the start screen shows after the game's version (android/touch-text.c).
+if(NOT DEFINED ORMEQ_ANDROID_REVISION)
+    set(ORMEQ_ANDROID_REVISION 0)
+endif()
+target_compile_definitions(main PRIVATE ORMEQ_ANDROID_REVISION=${ORMEQ_ANDROID_REVISION})
+
 # The desktop main() becomes ormeq_main(), called by android-main.c once the
 # runtime files are installed. SDL_MAIN_HANDLED stops SDL_main.h renaming it.
 set_source_files_properties("${GAME}/src/main-sdl3.c" PROPERTIES
@@ -116,9 +123,8 @@ target_compile_options(main PRIVATE
 # there is something to hear;
 # and the functions that put keyboard hints on screen pass through
 # android/touch-text.c, which rewords them for touch; the rows a document
-# declares to the frontend, and the menu reader of character creation, pass
-# through android/context.c too, which tells the controls what a page there
-# offers; and every save passes
+# declares to the frontend pass through android/context.c too, which tells
+# the controls what a page offers; and every save passes
 # through android/android-main.c, which notes whether it worked. A wrap only
 # catches calls from other files, which is where these are called from.
 target_link_options(main PRIVATE
@@ -144,7 +150,6 @@ target_link_options(main PRIVATE
     -Wl,--wrap=ui_event_menu_clear
     -Wl,--wrap=ui_event_menu_item
     -Wl,--wrap=ui_event_menu_select
-    -Wl,--wrap=ui_menu_inkey_nav
     -Wl,--wrap=save_player)
 
 target_link_libraries(main PRIVATE

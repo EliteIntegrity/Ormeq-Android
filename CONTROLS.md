@@ -16,7 +16,7 @@ command drawer do not change.
 | An item | tapped in Inventory or Equipment (or Inspect) | its natural action | the next actions, then More… |
 | A monster | tapped on the map | Fire, Cast or Attack | Throw, Look, More… |
 | Your square | nothing else focused, at the map | Get / Down / Up / Enter / Open / Rest | Cast, Fire, Look |
-| A page of character creation | the game shows it | OK where the page takes Return, else Back | Back, Random, Info, where the page offers them |
+| A menu or list (the start screen, Escape, Settings, character creation) | the game shows it, with a lit row | OK: the lit row, which the list's d-pad moves | Back, Random and Info where offered; PgUp, PgDn in play |
 
 So an action appears on the things it applies to, decided by the game's own
 rules, never by a list of situations here.
@@ -122,18 +122,31 @@ target), Cast and Throw (their aim prompt then offers the target, as its large
 button), Walk to (the old tap). Tapping anywhere else ends the focus. A monster
 a step away is still attacked by a tap.
 
-## Character creation
+## Menus and character creation
 
-A tap on a row chooses it, on every page. Most pages are a list to choose
-from, and Return does nothing there (their footer says a letter chooses, and
-right presses the keyboard's bar), so the cluster has OK only where the page
-takes Return: its footer offers it ("RET) Next Screen", "RET accepts"), or it
-lights its current choice (the race and class lists). Elsewhere Back is the
-large button, as on an item list. Random is there where the page lists "*",
-and Info (Tab) where it shows the race and class summary. A lit row on a list
-page is the keyboard's bar, not a choice the page has made, so OK never
-presses it. An OK that only clicked on the first page, the type of game, made
-the game look frozen to a player.
+Every menu shows a lit row, OK chooses it, and the d-pad's up and down move
+it (Ammerow's way, which a player missed). The game lights none until an arrow
+is pressed, since on the desktop the bar belongs to the keyboard, beside the
+mouse's own highlight; a touch screen has neither, so android/context.c
+lights one through change 0015's hook: the page's current choice where it
+shows one (drawn in light blue: the personality, the game speed, a patron, a
+realm), else the first row. OK sends what chooses the lit row: Return, or
+right on a page of character creation, where Return belongs to the page. A
+tap on a row still chooses it at once.
+
+The list's d-pad has up and down only, sending arrow keys. It never covers a
+row: it shrinks in its corner until it clears the menu's rows (whose places
+android/context.c sends), and goes if even a small one would not; before play
+no rail is drawn, and it may use the rail's strip. On a page of text OK
+closes the page, which is all there is to do there.
+
+Character creation has two pages that go on with Return, as their footers
+say ("RET) Next Screen", "RET) Begin Play"): the summary and the stats. Their
+rows are changes to make, so they get no lit row and no d-pad, their OK goes
+on, and their rows are tapped. Random is there where a page lists "*", and
+Info (Tab) where it shows the race and class summary. An OK that did nothing,
+on the first page in 0.1.0, made the game look frozen; one missing, in
+0.1.1, made a player tap rows they would rather have chosen with OK.
 
 ## Tidying
 

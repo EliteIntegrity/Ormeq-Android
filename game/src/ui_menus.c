@@ -20,6 +20,15 @@
 #endif
 
 /*
+ * Told about every menu's wait for a key: with the menu's document before it,
+ * and NULL after. A touch screen has no pointer to highlight a row, so its
+ * host lights one for its OK to choose (the Android port); when it says it
+ * has, the menu draws itself again with the row lit, as after an arrow.
+ * NULL on the desktop.
+ */
+bool (*ui_menu_hook)(doc_ptr doc, bool claim_return) = NULL;
+
+/*
  * A letter menu you can also walk with the arrows.
  *
  * These menus have always been driven by their letters, which is right: it is
@@ -50,9 +59,13 @@ static int _menu_inkey(doc_ptr doc, bool claim_return)
 {
     int ct  = doc_hotspot_count(doc);
     int sel = doc_selected(doc);
-    int cmd = inkey_special(FALSE);
+    int cmd;
 
     int i;
+
+    if (ui_menu_hook && ui_menu_hook(doc, claim_return)) return 0;
+    cmd = inkey_special(FALSE);
+    if (ui_menu_hook) ui_menu_hook(NULL, claim_return);
     if (cmd == ESCAPE) sound(SOUND_UI_BACK);
     for (i = 0; i < ct; ++i)
         if (cmd == doc_hotspot_key(doc, i) ||

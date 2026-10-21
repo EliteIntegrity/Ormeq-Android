@@ -1,4 +1,26 @@
-# Ormeq for Android 0.1.1
+# Ormeq for Android 0.1.1-android.1
+
+An Android-only update: the game is still Ormeq 0.1.1, as on Windows, and
+the next Windows version brings the two version numbers back together.
+
+- **Every menu has a confirmation button.** Menus and lists, from the start
+  screen and character creation to the pause menu and Settings, always show
+  one choice highlighted, starting on your current one. **OK** takes it, and
+  the d-pad's up and down move the highlight. Tapping a choice still takes it
+  at once. Before, race and class lists had no OK, and the pause menu's and
+  Settings' OK did nothing until a drag had highlighted a row.
+- The d-pad in a menu has only up and down, and it never covers a choice: it
+  shrinks to fit beside the list, or hides where a long list leaves no room
+  on a small phone (OK, tapping and dragging still work there).
+- On the summary and stats pages of character creation, OK still goes on,
+  as their footers say. On help and other pages of text, OK now closes the
+  page.
+- The start screen shows the whole version, 0.1.1-android.1.
+
+Gameplay and saves are unchanged. It installs over 0.1.1 or 0.1.0 and keeps
+your characters.
+
+## Ormeq for Android 0.1.1
 
 Character creation fixes, with the game at Ormeq 0.1.1 as on Windows:
 

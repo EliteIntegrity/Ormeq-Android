@@ -272,8 +272,74 @@ class TouchControlsView(context: Context) : View(context) {
         if (context.mode != ControlMode.MAP) endMonsterFocus()
         if (inPlayChanged) layoutControls()
         applyContext(afterMessages = wasMore)
-        if (!dpad.visible) releasePad()
+        if (!padShown) releasePad()
         invalidate()
+    }
+
+    /** The rows of the menu on screen, four ints each: left, top, right and bottom in drawing pixels (android/context.c). */
+    private var menuRows = IntArray(0)
+
+    fun setMenuRows(rows: IntArray) {
+        if (rows.contentEquals(menuRows)) return
+        menuRows = rows
+        fitPad()
+        if (!padShown) releasePad()
+        invalidate()
+    }
+
+    // Where the d-pad is drawn and takes touches: where it is laid out, or a
+    // list's, fitted beside the menu's rows (fitPad).
+    private var padCx = 0f
+    private var padCy = 0f
+    private var padR = 0f
+    private var padFits = true
+
+    private val padShown get() = dpad.visible && padFits
+
+    /**
+     * A list's pad keeps off the menu's rows: on the start screen they lie in
+     * its corner, and on a smaller phone a list can reach it. It needs only up
+     * and down, so it shrinks in its corner until it clears them, and goes only
+     * if even a small one would cover a row.
+     */
+    private fun fitPad() {
+        padCx = padX
+        padCy = padY
+        padR = padRadius
+        padFits = true
+        if (!dpad.list) return
+        // Before play no rail is drawn, and the pad may use its strip.
+        val railFree = !railShown() && !rail.isEmpty && rail.right <= game.left + 1f
+        val left = if (railFree) rail.left + dp(12f) else padX - padRadius
+        val bottom = padY + padRadius
+        var r = padRadius
+        while (r >= dp(LIST_PAD_SMALLEST_DP)) {
+            if (!coversRows(left + r, bottom - r, r)) {
+                padCx = left + r
+                padCy = bottom - r
+                padR = r
+                return
+            }
+            r -= dp(4f)
+        }
+        padFits = false
+    }
+
+    /** Whether a pad there would cover a row of the menu (but for the row's first cell, a margin). */
+    private fun coversRows(cx: Float, cy: Float, r: Float): Boolean {
+        val cell = metrics.cellWidth.toFloat()
+        for (i in 0 until menuRows.size / 4) {
+            val left = drawing.left + menuRows[i * 4] + cell
+            val top = drawing.top + menuRows[i * 4 + 1]
+            val right = drawing.left + menuRows[i * 4 + 2]
+            val bottom = drawing.top + menuRows[i * 4 + 3]
+            if (right <= left) continue
+            // The point of the row nearest the pad's centre.
+            val x = cx.coerceIn(left, right)
+            val y = cy.coerceIn(top, bottom)
+            if (hypot(x - cx, y - cy) < r + dp(4f)) return true
+        }
+        return false
     }
 
     fun setItemFocus(focus: ItemFocus?) {
@@ -324,6 +390,7 @@ class TouchControlsView(context: Context) : View(context) {
 
     private fun applyContext(afterMessages: Boolean = false) {
         dpad = ControlLayouts.dpad(gameContext)
+        fitPad()
         val cluster = ControlLayouts.cluster(gameContext, itemFocus, monsterFocus)
         if (cluster.primary?.label != primaryButton.command?.label) {
             primaryChangedAt = SystemClock.uptimeMillis()
@@ -392,6 +459,7 @@ class TouchControlsView(context: Context) : View(context) {
         padRadius = min(dp(if (tablet()) 88f else 72f), room * 0.33f)
         padX = game.left + dp(22f) + padRadius
         padY = bottom - padRadius
+        fitPad()
 
         // Cluster: a large button in the corner and three on an arc around it --
         // in play, the corner left of the sidebar, whose list of conditions
@@ -604,7 +672,7 @@ class TouchControlsView(context: Context) : View(context) {
         }
         // A look card keeps to the part of the map the controls leave clear
         // (change 0006), so nothing here makes way for it.
-        if (dpad.visible) drawPad(canvas)
+        if (padShown) drawPad(canvas)
         if (ControlLayouts.showsDigits(gameContext)) for (button in digitButtons) drawButton(canvas, button)
         if (ControlLayouts.showsHotbar(gameContext)) {
             shownSlots().forEachIndexed { index, button -> drawSlot(canvas, button, pins.getOrNull(index)) }
@@ -697,11 +765,11 @@ class TouchControlsView(context: Context) : View(context) {
     private fun drawPad(canvas: Canvas) {
         val aiming = dpad.label != null
         fill.color = Color.argb(110, 10, 14, 11)
-        canvas.drawCircle(padX, padY, padRadius, fill)
+        canvas.drawCircle(padCx, padCy, padR, fill)
         stroke.color = if (aiming) Color.argb(220, 240, 168, 80) else Color.argb(110, 255, 255, 255)
-        canvas.drawCircle(padX, padY, padRadius, stroke)
-        canvas.drawCircle(padX, padY, padRadius * DEAD_ZONE, stroke)
-        for (digit in intArrayOf(1, 2, 3, 4, 6, 7, 8, 9)) {
+        canvas.drawCircle(padCx, padCy, padR, stroke)
+        canvas.drawCircle(padCx, padCy, padR * DEAD_ZONE, stroke)
+        for (digit in if (dpad.list) intArrayOf(2, 8) else intArrayOf(1, 2, 3, 4, 6, 7, 8, 9)) {
             val (dx, dy) = offsetOf(digit)
             val active = digit == padDirection
             fill.color = when {
@@ -709,17 +777,17 @@ class TouchControlsView(context: Context) : View(context) {
                 aiming -> Color.argb(200, 240, 168, 80)
                 else -> Color.argb(120, 255, 255, 255)
             }
-            canvas.drawCircle(padX + dx * padRadius * 0.7f, padY + dy * padRadius * 0.7f, dp(if (active) 8f else 4.5f), fill)
+            canvas.drawCircle(padCx + dx * padR * 0.7f, padCy + dy * padR * 0.7f, dp(if (active) 8f else 4.5f), fill)
         }
         if (padCentreTap) {
             fill.color = Color.argb(120, 240, 150, 60)
-            canvas.drawCircle(padX, padY, padRadius * DEAD_ZONE, fill)
+            canvas.drawCircle(padCx, padCy, padR * DEAD_ZONE, fill)
         }
         dpad.label?.let {
             val size = text.textSize
             text.textSize = dp(11f)
             text.color = Color.argb(255, 240, 168, 80)
-            canvas.drawText(it, padX, padY - (text.descent() + text.ascent()) / 2, text)
+            canvas.drawText(it, padCx, padCy - (text.descent() + text.ascent()) / 2, text)
             text.color = Color.argb(240, 242, 238, 228)
             text.textSize = size
         }
@@ -728,7 +796,7 @@ class TouchControlsView(context: Context) : View(context) {
             val size = text.textSize
             text.textSize = dp(12f)
             text.color = Color.argb(if (padCentreTap) 235 else 125, 242, 238, 228)
-            canvas.drawText(it, padX, padY - (text.descent() + text.ascent()) / 2, text)
+            canvas.drawText(it, padCx, padCy - (text.descent() + text.ascent()) / 2, text)
             text.color = Color.argb(240, 242, 238, 228)
             text.textSize = size
         }
@@ -852,9 +920,9 @@ class TouchControlsView(context: Context) : View(context) {
         // At the map a touch a little outside the ring still counts: a thumb
         // finds the pad by feel.
         val reach = if (gameContext.mode == ControlMode.MAP) PAD_REACH_MAP else PAD_REACH
-        if (dpad.visible && padPointer == -1 && hypot(x - padX, y - padY) <= padRadius * reach) {
+        if (padShown && padPointer == -1 && hypot(x - padCx, y - padCy) <= padR * reach) {
             padPointer = id
-            padCentreTap = hypot(x - padX, y - padY) < padRadius * DEAD_ZONE
+            padCentreTap = hypot(x - padCx, y - padCy) < padR * DEAD_ZONE
             centreRepeated = false
             padRepeating = false
             padSpent = false
@@ -935,8 +1003,9 @@ class TouchControlsView(context: Context) : View(context) {
 
     private fun touchUp(id: Int, x: Float, y: Float) {
         if (id == padPointer) {
-            // A tap on the centre stays in place (or answers 5) for a turn.
-            if (padCentreTap && !centreRepeated) {
+            // A tap on the centre stays in place (or answers 5) for a turn; a
+            // list's centre is nothing.
+            if (padCentreTap && !centreRepeated && !dpad.list) {
                 if (gameContext.mode == ControlMode.MAP) send(Action.Keys("${Keys.RAW},")) else step(5)
             }
             releasePad()
@@ -1269,9 +1338,9 @@ class TouchControlsView(context: Context) : View(context) {
     }
 
     private fun updatePad(x: Float, y: Float) {
-        val dx = x - padX
-        val dy = y - padY
-        if (hypot(dx, dy) < padRadius * DEAD_ZONE) {
+        val dx = x - padCx
+        val dy = y - padCy
+        if (hypot(dx, dy) < padR * DEAD_ZONE) {
             setPadDirection(0)
             return
         }
@@ -1280,7 +1349,9 @@ class TouchControlsView(context: Context) : View(context) {
         padCentreTap = false
         val angle = Math.toDegrees(atan2(dy, dx).toDouble()) + 360
         // Eight 45-degree sectors, clockwise from east.
-        setPadDirection(SECTOR_DIGITS[((angle + 22.5) / 45).toInt() % 8])
+        val digit = SECTOR_DIGITS[((angle + 22.5) / 45).toInt() % 8]
+        // A list's pad has up and down only: the upper and lower three sectors.
+        setPadDirection(if (!dpad.list) digit else when (digit) { 7, 8, 9 -> 8; 1, 2, 3 -> 2; else -> 0 })
     }
 
     private fun setPadDirection(digit: Int) {
@@ -1299,10 +1370,14 @@ class TouchControlsView(context: Context) : View(context) {
         }
     }
 
-    /** A step, or a direction where the game asks for one: the keypad digit. */
+    /**
+     * A step, or a direction where the game asks for one: the keypad digit.
+     * In a menu, the arrow key, which moves its lit row.
+     */
     private fun step(digit: Int) {
         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-        NativeBridge.pressKeys(digit.toString(), false)
+        val keys = if (dpad.list) (if (digit == 8) Keys.UP else Keys.DOWN).toString() else digit.toString()
+        NativeBridge.pressKeys(keys, false)
     }
 
     private fun offsetOf(digit: Int): Pair<Float, Float> {
@@ -1320,6 +1395,8 @@ class TouchControlsView(context: Context) : View(context) {
         /** SDL's X1 mouse button: walk to the point, monster or not (android/context.c). */
         const val BUTTON_WALK = 4
         const val DEAD_ZONE = 0.28f
+        /** A list's pad shrinks to clear a menu's rows, but no smaller than this (dp). */
+        const val LIST_PAD_SMALLEST_DP = 44f
         /** How far out, in radii, a touch still takes the d-pad: at the map, and elsewhere. */
         const val PAD_REACH_MAP = 1.35f
         const val PAD_REACH = 1.15f

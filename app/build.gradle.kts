@@ -18,12 +18,19 @@ val keystoreProperties = Properties().apply {
 }
 
 // The Android edition has the Windows edition's version number: ORMEQ_VER in
-// the game's src/defines.h. The version code follows it (1.2.3 is 10203).
+// the game's src/defines.h.
 val gameVersion: MatchResult = Regex("""#define\s+ORMEQ_VER\s+"(\d+)\.(\d+)\.(\d+)"""")
     .find(rootProject.file("game/src/defines.h").readText())
     ?: throw GradleException("No ORMEQ_VER in game/src/defines.h")
 val (versionMajor, versionMinor, versionPatch) = gameVersion.destructured.toList().map { it.toInt() }
 require(versionMinor < 100 && versionPatch < 100) { "ORMEQ_VER is beyond the version code's scheme" }
+
+// An Android-only update on top of it, ormeq.androidRevision in
+// gradle.properties, is "0.1.1-android.1"; at 0 the version is the Windows
+// edition's own. The version code makes room for it: 0.1.1 is 10100, and its
+// first Android-only update 10101. (0.1.0 and 0.1.1 were 100 and 101.)
+val androidRevision = (project.findProperty("ormeq.androidRevision") as String? ?: "0").toInt()
+require(androidRevision in 0..99) { "ormeq.androidRevision is beyond the version code's scheme" }
 
 // The game's artwork (the character plates and tile sheets, with the
 // questgiver portraits), sound effects and music are licensed separately (see
@@ -46,8 +53,10 @@ android {
         applicationId = "com.ormeq.game"
         minSdk = 26
         targetSdk = 36
-        versionCode = versionMajor * 10000 + versionMinor * 100 + versionPatch
-        versionName = "$versionMajor.$versionMinor.$versionPatch"
+        versionCode = (versionMajor * 10000 + versionMinor * 100 + versionPatch) * 100 + androidRevision
+        versionName = "$versionMajor.$versionMinor.$versionPatch" + if (androidRevision > 0) "-android.$androidRevision" else ""
+        // The start screen shows the whole version (android/touch-text.c).
+        externalNativeBuild { cmake { arguments += "-DORMEQ_ANDROID_REVISION=$androidRevision" } }
 
         ndk {
             // -Pormeq.abis=x86_64 builds only what the emulator needs.

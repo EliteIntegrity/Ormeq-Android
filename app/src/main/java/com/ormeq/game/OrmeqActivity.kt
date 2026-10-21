@@ -194,6 +194,12 @@ class OrmeqActivity : SDLActivity() {
         }
     }
 
+    /** Called by the game: the rows of the menu on screen, four ints each (left, top, right, bottom; drawing pixels). */
+    @Suppress("unused")
+    fun onMenuRows(rows: IntArray) {
+        runOnUiThread { controls?.setMenuRows(rows) }
+    }
+
     /** Back closes the command drawer; otherwise SDL passes it to the game as Escape. */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BACK && controls?.drawerIsOpen == true) {

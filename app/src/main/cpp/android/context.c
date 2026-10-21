@@ -57,7 +57,13 @@ enum context_flag {
     FLAG_PAGE_RETURN = 512,
     FLAG_PAGE_CURSOR = 1024,
     FLAG_PAGE_RANDOM = 2048,
-    FLAG_PAGE_MORE_INFO = 4096
+    FLAG_PAGE_MORE_INFO = 4096,
+    /* One of the game's menus, with a lit row the d-pad moves: OK chooses it,
+     * with Return or, on a page of character creation, with right. */
+    FLAG_MENU_LIST = 8192,
+    FLAG_MENU_RIGHT = 16384,
+    /* A page of text (help, a character sheet): OK closes it. */
+    FLAG_TEXT_PAGE = 32768
 };
 
 /* ---- What the game is waiting for ------------------------------------- */
@@ -177,9 +183,14 @@ static int current_mode(int *detail, cptr *keys)
 
 /*
  * The rows the document on screen declares to the frontend, which are what a
- * tap chooses from: whether one of them is lit, and whether one is "*",
- * Random. Seen on their way past, as the frontend sees them.
+ * tap chooses from: where each is and its key, whether one of them is lit,
+ * and whether one is "*", Random. Seen on their way past, as the frontend
+ * sees them.
  */
+#define PAGE_ROWS_MAX 64
+
+static struct { int x, y, width; char key; } page_rows[PAGE_ROWS_MAX];
+static int page_row_count;
 static bool page_row_lit, page_random;
 
 extern bool __real_ui_event_menu_clear(void);
@@ -188,6 +199,7 @@ extern bool __real_ui_event_menu_select(int x, int y, int width);
 
 bool __wrap_ui_event_menu_clear(void)
 {
+    page_row_count = 0;
     page_row_lit = page_random = FALSE;
     return __real_ui_event_menu_clear();
 }
@@ -195,6 +207,13 @@ bool __wrap_ui_event_menu_clear(void)
 bool __wrap_ui_event_menu_item(int x, int y, int width, char key)
 {
     if (key == '*') page_random = TRUE;
+    if (page_row_count < PAGE_ROWS_MAX) {
+        page_rows[page_row_count].x = x;
+        page_rows[page_row_count].y = y;
+        page_rows[page_row_count].width = width;
+        page_rows[page_row_count].key = key;
+        page_row_count++;
+    }
     return __real_ui_event_menu_item(x, y, width, key);
 }
 
@@ -202,27 +221,6 @@ bool __wrap_ui_event_menu_select(int x, int y, int width)
 {
     page_row_lit = TRUE;
     return __real_ui_event_menu_select(x, y, width);
-}
-
-/*
- * Whether the game is waiting in the menu reader that most pages of character
- * creation use, whose lit row is the keyboard's bar rather than a choice the
- * page has made (before 0.1.1 it could even be left over from the page
- * before). The race and class lists read keys themselves and light their
- * current choice, which Return takes.
- */
-static bool in_menu_reader;
-
-extern int __real_ui_menu_inkey_nav(doc_ptr doc);
-
-int __wrap_ui_menu_inkey_nav(doc_ptr doc)
-{
-    int key;
-
-    in_menu_reader = TRUE;
-    key = __real_ui_menu_inkey_nav(doc);
-    in_menu_reader = FALSE;
-    return key;
 }
 
 /* Whether a row of the screen shows this text. */
@@ -246,22 +244,118 @@ static bool screen_shows(cptr text)
 }
 
 /*
+ * A page of character creation that goes on with Return, as its footer says
+ * ("OK)" or "OK accepts", as android/touch-text.c words the desktop's RET):
+ * the summary, the stats, the split personality. Its rows are changes to
+ * make, and OK means go on.
+ */
+static bool page_takes_return(void)
+{
+    return screen_shows("OK) ") || screen_shows("OK accepts");
+}
+
+/*
+ * Which of the game's two menu readers it is waiting in, if either: the
+ * Settings and Escape menus' (and the start screen's), where Return chooses
+ * the lit row, or most pages of character creation's, where right does
+ * (Return belongs to the page). The race and class lists read keys
+ * themselves, and light their current choice, which Return takes.
+ */
+enum { MENU_NONE, MENU_RETURN, MENU_RIGHT };
+static int menu_reader;
+
+/* The key of the row showing the page's current choice, which pages of
+ * character creation draw in light blue (the personality, the game speed,
+ * a patron, a realm...), or 0. */
+static char current_choice_key(void)
+{
+    int i, x;
+
+    for (i = 0; i < page_row_count; i++) {
+        for (x = page_rows[i].x; x < page_rows[i].x + page_rows[i].width; x++) {
+            byte a;
+            char c;
+
+            if (Term_what(x, page_rows[i].y, &a, &c)) break;
+            if (a == TERM_L_BLUE && c != ' ') return page_rows[i].key;
+        }
+    }
+    return 0;
+}
+
+/*
+ * A menu shows a lit row from the start, so OK always has something to
+ * choose and the d-pad something to move (Ammerow's way; CONTROLS.md). The
+ * game lights none until an arrow is pressed: on the desktop the bar belongs
+ * to the keyboard, beside the mouse's own highlight, and a touch screen has
+ * no pointer to show one. Lights the page's current choice where it shows
+ * one, else the first row, and says whether it did: the caller then draws
+ * the page again, as after an arrow. Not where Return goes on.
+ */
+static bool light_a_row(doc_ptr doc)
+{
+    int ct = doc_hotspot_count(doc), choice = 0, i;
+    char key;
+
+    if (ct <= 0 || doc_selected(doc) >= 0) return FALSE;
+    if (menu_reader == MENU_RIGHT && page_takes_return()) return FALSE;
+    key = menu_reader == MENU_RIGHT ? current_choice_key() : 0;
+    for (i = 0; key && i < ct; i++) {
+        if (doc_hotspot_key(doc, i) == key) {
+            choice = i;
+            break;
+        }
+    }
+    doc_select(doc, choice);
+    return TRUE;
+}
+
+/*
+ * Every menu's wait for a key (ui_menu_hook, change 0015): with its document
+ * before the wait, NULL after. A link-time wrap of the readers would miss the
+ * Settings and Escape menus, whose calls to them the compiler inlines. Both
+ * readers return 0 for a key they kept (an arrow), and every menu then draws
+ * itself again: so it does for a row just lit.
+ */
+static bool menu_hook(doc_ptr doc, bool claim_return)
+{
+    if (!doc) {
+        menu_reader = MENU_NONE;
+        return FALSE;
+    }
+    menu_reader = claim_return ? MENU_RETURN : MENU_RIGHT;
+    if (!light_a_row(doc)) return FALSE;
+    menu_reader = MENU_NONE;
+    return TRUE;
+}
+
+/*
+ * One of the game's menus, its lit row for OK to choose and the d-pad to
+ * move: not a page of character creation that goes on with Return.
+ */
+static bool menu_list(void)
+{
+    if (menu_reader == MENU_NONE || page_row_count == 0) return FALSE;
+    return menu_reader == MENU_RETURN || !page_takes_return();
+}
+
+/*
  * What a page of character creation offers besides its rows, as the page
- * itself says (see CONTROLS.md). Return: where its footer offers it ("OK)" or
- * "OK accepts", as android/touch-text.c words the desktop's RET), or where the
- * page lights its own current choice, which Return takes (the race and class
- * lists). Random, where a "*" row is listed. More information, where the race
- * and class summary is shown (its first line ends "Game Speed:"), which Tab
- * steps through. Most pages are a list to choose from and take Return for
- * nothing: an OK there only played its accept sound, and on the very first
- * page, the type of game, a player who pressed it took the game for frozen.
+ * itself says (see CONTROLS.md). Return, where its footer offers it, or where
+ * the page lights its own current choice, which Return takes (the race and
+ * class lists). Random, where a "*" row is listed. More information, where
+ * the race and class summary is shown (its first line ends "Game Speed:"),
+ * which Tab steps through. The other pages are lists, whose lit row OK
+ * chooses (FLAG_MENU_LIST). In 0.1.0 an OK that did nothing there made the
+ * first page, the type of game, look frozen; 0.1.1 took it away, and a
+ * player then missed it.
  */
 static int birth_page_flags(void)
 {
     int flags = 0;
 
-    if (screen_shows("OK) ") || screen_shows("OK accepts")) flags |= FLAG_PAGE_RETURN;
-    if (page_row_lit && !in_menu_reader) flags |= FLAG_PAGE_CURSOR;
+    if (page_takes_return()) flags |= FLAG_PAGE_RETURN;
+    if (page_row_lit && menu_reader == MENU_NONE) flags |= FLAG_PAGE_CURSOR;
     if (page_random) flags |= FLAG_PAGE_RANDOM;
     if (screen_shows("Game Speed:")) flags |= FLAG_PAGE_MORE_INFO;
     return flags;
@@ -275,6 +369,12 @@ static void current_context(int *mode, int *primary, int *flags, int *detail, cp
     if (ui_screen_phase() == UI_PHASE_BIRTH) {
         *flags |= FLAG_BIRTH;
         if (*mode == MODE_NONE) *flags |= birth_page_flags();
+    }
+    if (menu_list()) {
+        *flags |= FLAG_MENU_LIST;
+        if (menu_reader == MENU_RIGHT) *flags |= FLAG_MENU_RIGHT;
+    } else if (doc_viewer_active()) {
+        *flags |= FLAG_TEXT_PAGE;
     }
     if (!in_play()) return;
 
@@ -337,6 +437,43 @@ static void call_metrics(JNIEnv *env, jobject activity, jmethodID method, void *
     (*env)->CallVoidMethod(env, activity, method, m[0], m[1], m[2], m[3], m[4], m[5], m[6]);
 }
 
+/* The menu's rows: their count, then four ints each. */
+static void call_rows(JNIEnv *env, jobject activity, jmethodID method, void *data)
+{
+    int *rows = data;
+    jintArray array = (*env)->NewIntArray(env, rows[0] * 4);
+
+    if (!array) return;
+    (*env)->SetIntArrayRegion(env, array, 0, rows[0] * 4, (const jint *)(rows + 1));
+    (*env)->CallVoidMethod(env, activity, method, array);
+    (*env)->DeleteLocalRef(env, array);
+}
+
+/*
+ * Where the rows of the menu on screen are, in drawing pixels, so that the
+ * controls can keep a list's d-pad off them (on the start screen they lie in
+ * its corner).
+ */
+static void publish_rows(void)
+{
+    static jmethodID rows_method;
+    static int last[1 + PAGE_ROWS_MAX * 4] = { -1 };
+    int rows[1 + PAGE_ROWS_MAX * 4];
+    int i, ox, oy;
+
+    sdl3_grid_origin(&ox, &oy);
+    rows[0] = page_row_count;
+    for (i = 0; i < page_row_count; i++) {
+        rows[1 + i * 4] = ox + page_rows[i].x * sdl3.cell_w;
+        rows[2 + i * 4] = oy + page_rows[i].y * sdl3.cell_h;
+        rows[3 + i * 4] = ox + (page_rows[i].x + page_rows[i].width) * sdl3.cell_w;
+        rows[4 + i * 4] = oy + (page_rows[i].y + 1) * sdl3.cell_h;
+    }
+    if (memcmp(rows, last, sizeof(int) * (1 + page_row_count * 4)) == 0) return;
+    memcpy(last, rows, sizeof(int) * (1 + page_row_count * 4));
+    ormeq_call_activity("onMenuRows", "([I)V", &rows_method, call_rows, rows);
+}
+
 static void publish_context(void)
 {
     static int last_mode = -1, last_primary = -1, last_flags = -1, last_detail = -1;
@@ -386,6 +523,7 @@ static void publish_context(void)
         memcpy(last_metrics, metrics, sizeof(metrics));
         ormeq_call_activity("onGameMetrics", "(IIIIIII)V", &metrics_method, call_metrics, metrics);
     }
+    publish_rows();
 }
 
 /* ---- Keys from the controls ------------------------------------------- */
@@ -1048,6 +1186,7 @@ void ormeq_android_init(void)
     SDL_AddEventWatch(watch_input, NULL);
     sdl3_click_hook = click_hook;
     sdl3_look_label_hook = ormeq_touch_label;
+    ui_menu_hook = menu_hook;
     ui_touch = TRUE;
     ormeq_items_init();
     ormeq_pins_init();

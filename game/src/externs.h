@@ -2134,6 +2134,7 @@ extern void    ui_effects_show(void);
 extern void    ui_settings_menu(void);
 extern int  ui_menu_inkey(doc_ptr doc);
 extern int  ui_menu_inkey_nav(doc_ptr doc);
+extern bool (*ui_menu_hook)(doc_ptr doc, bool claim_return);
 extern void    ui_mouse_click(int x, int y, int button);
 extern void    ui_mouse_click_cave(int x, int y, int button);
 extern bool    ui_mouse_is_cave(void);

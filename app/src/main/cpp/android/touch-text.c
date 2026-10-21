@@ -86,15 +86,16 @@ static const struct rewrite phrases[] = {
     /* Character creation. A long press there asks for help on a choice and
      * lowers a stat (android/context.c). */
     { "A letter chooses. Arrows move, right chooses. SHIFT+letter for more.",
-      "Tap a row to choose it; hold it for more." },
-    { "A letter chooses. Arrows move, right chooses.", "Tap a row to choose it." },
+      "Tap a row or OK to choose; hold a row for more." },
+    { "A letter chooses. Arrows move, right chooses.", "Tap a row or OK to choose." },
     { "A letter toggles. Arrows move, right toggles. RET accepts.", "Tap a row to toggle it; OK accepts." },
+    /* Alone, it is the summary's and the stats page's, where OK goes on. */
     { "Arrows move, right chooses.", "Tap a row to choose it." },
     { "You can get general help at any time by pressing <color:keypress>?</color>.",
       "<color:keypress>?</color>) Help, below, says more." },
     { "You can often get specific help by entering the uppercase letter for a command. "
       "For example, type <color:keypress>B</color> on this screen to receive help on Beginner Mode.",
-      "Tap a type of game to begin; hold it for help on it." },
+      "Tap a type of game, or OK for the highlighted one; hold one for help on it." },
     { "You can often get specific help by entering the uppercase letter for a command. "
       "For example, type <color:keypress>R</color> on this screen to receive help on your "
       "currently selected race.",
@@ -198,14 +199,31 @@ static char *find_phrase(char *text, cptr phrase)
     return NULL;
 }
 
+/*
+ * The start screen's version, as the APK's: an Android-only update on top of
+ * the game's version is "0.1.1-android.1" (ORMEQ_ANDROID_REVISION, from
+ * gradle.properties), so a player can tell which build they have.
+ */
+#define TEXT_OF(x) #x
+#define TEXT_OF_VALUE(x) TEXT_OF(x)
+#define START_VERSION_LINE "<color:D>" ORMEQ_VER "</color>\n"
+
+static cptr android_version_line(cptr text)
+{
+    if (ORMEQ_ANDROID_REVISION <= 0 || strcmp(text, START_VERSION_LINE) != 0) return NULL;
+    return "<color:D>" ORMEQ_VER "-android." TEXT_OF_VALUE(ORMEQ_ANDROID_REVISION) "</color>\n";
+}
+
 /* Rewrites into buffer; returns text itself when nothing applies. */
 static cptr touch_text(cptr text, char *buffer, size_t size)
 {
     size_t i;
     bool changed = FALSE;
     bool hint = FALSE;
+    cptr version;
 
     if (!text || !text[0]) return text;
+    if ((version = android_version_line(text)) != NULL) return version;
     for (i = 0; i < N_ELEMENTS(lines); i++) {
         if (strcmp(text, lines[i].from) == 0) return lines[i].to;
     }

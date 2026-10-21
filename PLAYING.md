@@ -5,7 +5,7 @@
 Ormeq for Android needs Android 8.0 or later on a 64-bit device (arm64-v8a,
 or x86_64 for emulators). It installs from its APK:
 
-1. On the phone or tablet, download the APK (`Ormeq-<version>-android.apk`)
+1. On the phone or tablet, download the APK (the `.apk` file)
    from the [latest release](https://github.com/EliteIntegrity/Ormeq-Android/releases/latest).
 2. Open the download. If Android asks, allow your browser or file manager to
    install apps, then choose **Install**.
@@ -64,10 +64,12 @@ Without a keyboard, help is in **More**, under Game.
 - **Typing**: where the game asks for a name, a number or other text, the
   cluster has **Type…** for the on-screen keyboard; **Keyboard** is also in the
   More drawer.
-- **Screens of text and lists**: drag to scroll, swipe sideways to turn the
-  page or change a setting. PgUp, PgDn and Back are in the cluster.
-- **Character creation**: tap a choice to take it, and hold it for its help.
-  OK appears where a page goes on, or takes the race or class shown lit.
+- **Menus and lists** always have one choice highlighted, starting on your
+  current one. **OK** takes it, and the d-pad's up and down move the
+  highlight; or tap a choice to take it at once. In character creation, hold
+  a choice for its help; on the summary and stats pages, **OK** goes on.
+- **Screens of text**: drag to scroll, swipe sideways to turn the page. PgUp,
+  PgDn and Back are in the cluster, and **OK** closes the page.
 
 ## Look at a creature
 

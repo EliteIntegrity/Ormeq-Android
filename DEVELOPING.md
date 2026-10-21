@@ -61,7 +61,10 @@ Official builds add the separately licensed files from a private asset pack:
 a folder laid out as they install (`lib/art/`, `lib/tiles/pack/`,
 `lib/xtra/sound/pack/` and `lib/xtra/music/pack/`), named by `ormeq.assetPack`
 in `local.properties` or with `-Pormeq.assetPack=...`. The version comes from
-`ORMEQ_VER` in `game/src/defines.h`.
+`ORMEQ_VER` in `game/src/defines.h`, the Windows edition's version, and
+`ormeq.androidRevision` in `gradle.properties`, an Android-only update on top
+of it: 0.1.1 with revision 1 is 0.1.1-android.1. The revision goes back to 0
+when the game takes the next Windows version.
 
 ## Checks
 

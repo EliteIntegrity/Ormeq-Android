@@ -146,3 +146,16 @@ cluster's OK and Back give; at Large on a small phone the desktop's footer ran
 under them. Its hints say tap and drag.
 
 Files: `game/src/ui_quest.c`.
+
+## 0015 A host's say in every menu's wait for a key
+
+`ui_menu_hook(doc, claim_return)` before the menu reader's wait
+(`_menu_inkey()` in ui_menus.c) and `ui_menu_hook(NULL, ...)` after it, as
+0005's hook brackets an item's description; NULL on the desktop. Android
+lights a row there when none is (a touch screen has no pointer to highlight
+one), so the cluster's OK always chooses something and the d-pad can move it;
+the menu then draws itself again, as after an arrow. A link-time wrap of the
+readers missed the Settings and Escape menus, whose calls the compiler
+inlines.
+
+Files: `game/src/externs.h`, `game/src/ui_menus.c`.
