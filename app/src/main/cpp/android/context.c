@@ -52,7 +52,12 @@ enum context_flag {
     FLAG_IN_PLAY = 32,
     FLAG_MONSTER_IN_VIEW = 64,
     FLAG_HURT = 128,
-    FLAG_BLOCKED = 256
+    FLAG_BLOCKED = 256,
+    /* A page of character creation: what it offers besides its rows. */
+    FLAG_PAGE_RETURN = 512,
+    FLAG_PAGE_CURSOR = 1024,
+    FLAG_PAGE_RANDOM = 2048,
+    FLAG_PAGE_MORE_INFO = 4096
 };
 
 /* ---- What the game is waiting for ------------------------------------- */
@@ -170,12 +175,107 @@ static int current_mode(int *detail, cptr *keys)
     return MODE_MENU;
 }
 
+/*
+ * The rows the document on screen declares to the frontend, which are what a
+ * tap chooses from: whether one of them is lit, and whether one is "*",
+ * Random. Seen on their way past, as the frontend sees them.
+ */
+static bool page_row_lit, page_random;
+
+extern bool __real_ui_event_menu_clear(void);
+extern bool __real_ui_event_menu_item(int x, int y, int width, char key);
+extern bool __real_ui_event_menu_select(int x, int y, int width);
+
+bool __wrap_ui_event_menu_clear(void)
+{
+    page_row_lit = page_random = FALSE;
+    return __real_ui_event_menu_clear();
+}
+
+bool __wrap_ui_event_menu_item(int x, int y, int width, char key)
+{
+    if (key == '*') page_random = TRUE;
+    return __real_ui_event_menu_item(x, y, width, key);
+}
+
+bool __wrap_ui_event_menu_select(int x, int y, int width)
+{
+    page_row_lit = TRUE;
+    return __real_ui_event_menu_select(x, y, width);
+}
+
+/*
+ * Whether the game is waiting in the menu reader that most pages of character
+ * creation use, whose lit row is the keyboard's bar rather than a choice the
+ * page has made (before 0.1.1 it could even be left over from the page
+ * before). The race and class lists read keys themselves and light their
+ * current choice, which Return takes.
+ */
+static bool in_menu_reader;
+
+extern int __real_ui_menu_inkey_nav(doc_ptr doc);
+
+int __wrap_ui_menu_inkey_nav(doc_ptr doc)
+{
+    int key;
+
+    in_menu_reader = TRUE;
+    key = __real_ui_menu_inkey_nav(doc);
+    in_menu_reader = FALSE;
+    return key;
+}
+
+/* Whether a row of the screen shows this text. */
+static bool screen_shows(cptr text)
+{
+    char line[256];
+    int x, y, cols = MIN(sdl3.cols, (int)sizeof(line) - 1);
+
+    for (y = 0; y < sdl3.rows; y++) {
+        for (x = 0; x < cols; x++) {
+            byte a;
+            char c;
+
+            if (Term_what(x, y, &a, &c) || !c) c = ' ';
+            line[x] = c;
+        }
+        line[cols] = '\0';
+        if (strstr(line, text)) return TRUE;
+    }
+    return FALSE;
+}
+
+/*
+ * What a page of character creation offers besides its rows, as the page
+ * itself says (see CONTROLS.md). Return: where its footer offers it ("OK)" or
+ * "OK accepts", as android/touch-text.c words the desktop's RET), or where the
+ * page lights its own current choice, which Return takes (the race and class
+ * lists). Random, where a "*" row is listed. More information, where the race
+ * and class summary is shown (its first line ends "Game Speed:"), which Tab
+ * steps through. Most pages are a list to choose from and take Return for
+ * nothing: an OK there only played its accept sound, and on the very first
+ * page, the type of game, a player who pressed it took the game for frozen.
+ */
+static int birth_page_flags(void)
+{
+    int flags = 0;
+
+    if (screen_shows("OK) ") || screen_shows("OK accepts")) flags |= FLAG_PAGE_RETURN;
+    if (page_row_lit && !in_menu_reader) flags |= FLAG_PAGE_CURSOR;
+    if (page_random) flags |= FLAG_PAGE_RANDOM;
+    if (screen_shows("Game Speed:")) flags |= FLAG_PAGE_MORE_INFO;
+    return flags;
+}
+
 static void current_context(int *mode, int *primary, int *flags, int *detail, cptr *keys)
 {
     *mode = current_mode(detail, keys);
     *primary = PRIMARY_REST;
     *flags = 0;
-    if (ui_screen_phase() == UI_PHASE_BIRTH) *flags |= FLAG_BIRTH;
+    if (ui_screen_phase() == UI_PHASE_BIRTH) {
+        *flags |= FLAG_BIRTH;
+        if (*mode == MODE_NONE) *flags |= birth_page_flags();
+    }
     if (!in_play()) return;
 
     *flags |= FLAG_IN_PLAY;

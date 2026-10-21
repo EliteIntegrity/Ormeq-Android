@@ -16,6 +16,7 @@ command drawer do not change.
 | An item | tapped in Inventory or Equipment (or Inspect) | its natural action | the next actions, then More… |
 | A monster | tapped on the map | Fire, Cast or Attack | Throw, Look, More… |
 | Your square | nothing else focused, at the map | Get / Down / Up / Enter / Open / Rest | Cast, Fire, Look |
+| A page of character creation | the game shows it | OK where the page takes Return, else Back | Back, Random, Info, where the page offers them |
 
 So an action appears on the things it applies to, decided by the game's own
 rules, never by a list of situations here.
@@ -120,6 +121,19 @@ Actions: Fire (with a launcher: the first ammunition it can shoot, at the
 target), Cast and Throw (their aim prompt then offers the target, as its large
 button), Walk to (the old tap). Tapping anywhere else ends the focus. A monster
 a step away is still attacked by a tap.
+
+## Character creation
+
+A tap on a row chooses it, on every page. Most pages are a list to choose
+from, and Return does nothing there (their footer says a letter chooses, and
+right presses the keyboard's bar), so the cluster has OK only where the page
+takes Return: its footer offers it ("RET) Next Screen", "RET accepts"), or it
+lights its current choice (the race and class lists). Elsewhere Back is the
+large button, as on an item list. Random is there where the page lists "*",
+and Info (Tab) where it shows the race and class summary. A lit row on a list
+page is the keyboard's bar, not a choice the page has made, so OK never
+presses it. An OK that only clicked on the first page, the type of game, made
+the game look frozen to a player.
 
 ## Tidying
 

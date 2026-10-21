@@ -1,4 +1,24 @@
-# Ormeq for Android 0.1.0
+# Ormeq for Android 0.1.1
+
+Character creation fixes, with the game at Ormeq 0.1.1 as on Windows:
+
+- Character creation's touch buttons now offer only what each page does. On
+  the first page, the type of game, a choice is made by tapping it, and OK did
+  nothing there, so the game looked stuck
+  ([issue 1](https://github.com/EliteIntegrity/Ormeq-Android/issues/1)). OK
+  now appears only where a page goes on or takes the highlighted race or
+  class; a page that is a list to choose from has Back as its large button;
+  Random and Info appear only where they work. The first page now says to
+  tap a type of game.
+- From Ormeq 0.1.1: highlights no longer carry from one character creation
+  page to the next, Quick Start and the Random patron can be chosen only
+  where they are shown, and Return makes its accept sound only where a page
+  acts on it.
+
+Gameplay and saves are unchanged. 0.1.1 installs over 0.1.0 and keeps your
+characters.
+
+## Ormeq for Android 0.1.0
 
 First Android release.
 

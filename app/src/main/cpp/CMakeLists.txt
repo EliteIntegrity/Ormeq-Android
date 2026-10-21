@@ -115,7 +115,10 @@ target_compile_options(main PRIVATE
 # pass through android/sound.c, which holds an audio device open only while
 # there is something to hear;
 # and the functions that put keyboard hints on screen pass through
-# android/touch-text.c, which rewords them for touch; and every save passes
+# android/touch-text.c, which rewords them for touch; the rows a document
+# declares to the frontend, and the menu reader of character creation, pass
+# through android/context.c too, which tells the controls what a page there
+# offers; and every save passes
 # through android/android-main.c, which notes whether it worked. A wrap only
 # catches calls from other files, which is where these are called from.
 target_link_options(main PRIVATE
@@ -138,6 +141,10 @@ target_link_options(main PRIVATE
     -Wl,--wrap=cmsg_print
     -Wl,--wrap=Term_putstr
     -Wl,--wrap=Term_addstr
+    -Wl,--wrap=ui_event_menu_clear
+    -Wl,--wrap=ui_event_menu_item
+    -Wl,--wrap=ui_event_menu_select
+    -Wl,--wrap=ui_menu_inkey_nav
     -Wl,--wrap=save_player)
 
 target_link_libraries(main PRIVATE

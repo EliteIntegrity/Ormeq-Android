@@ -94,7 +94,7 @@ static const struct rewrite phrases[] = {
       "<color:keypress>?</color>) Help, below, says more." },
     { "You can often get specific help by entering the uppercase letter for a command. "
       "For example, type <color:keypress>B</color> on this screen to receive help on Beginner Mode.",
-      "Hold a choice for help on it." },
+      "Tap a type of game to begin; hold it for help on it." },
     { "You can often get specific help by entering the uppercase letter for a command. "
       "For example, type <color:keypress>R</color> on this screen to receive help on your "
       "currently selected race.",

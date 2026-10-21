@@ -48,6 +48,14 @@ object ContextFlags {
     const val HURT = 128
     /** A step from the d-pad went nowhere (a wall): a held direction stops. */
     const val BLOCKED = 256
+    /** A page of character creation whose footer offers Return (OK). */
+    const val PAGE_RETURN = 512
+    /** A page of character creation lighting its current choice, which Return takes (race, class). */
+    const val PAGE_CURSOR = 1024
+    /** A page of character creation that lists "*", Random. */
+    const val PAGE_RANDOM = 2048
+    /** A page of character creation showing the race and class summary, which Tab steps through. */
+    const val PAGE_MORE_INFO = 4096
 }
 
 /** ITEM detail bits: what the item prompt offers (keep in step with android/ormeq-android.h). */
@@ -356,9 +364,20 @@ object ControlLayouts {
             )
         }
         ControlMode.MENU -> Cluster(ok, listOf(back, key("PgUp", Keys.PAGE_UP), key("PgDn", Keys.PAGE_DOWN)))
-        // Tab is "More Info" on the race and class pages.
+        // Character creation: a tap on a row chooses it, and the cluster has
+        // only what the page offers besides (android/context.c). OK where the
+        // page takes Return: to go on, or to choose the race or class it has
+        // lit. A page that is a list to choose from has Back as its large
+        // button, as an item list does. Random where "*" is listed; Info
+        // (Tab, "More Info") wherever the race and class summary is shown.
         ControlMode.NONE -> if (context.has(ContextFlags.BIRTH)) {
-            Cluster(ok, listOf(back, key("Random", '*'), key("Info", '\t')))
+            val random = if (context.has(ContextFlags.PAGE_RANDOM)) key("Random", '*') else null
+            val info = if (context.has(ContextFlags.PAGE_MORE_INFO)) key("Info", '\t') else null
+            if (context.has(ContextFlags.PAGE_RETURN) || context.has(ContextFlags.PAGE_CURSOR)) {
+                Cluster(ok, listOf(back, random, info))
+            } else {
+                Cluster(back, listOf(null, random, info))
+            }
         } else {
             Cluster(ok, listOf(back, null, null))
         }
