@@ -63,7 +63,9 @@ enum context_flag {
     FLAG_MENU_LIST = 8192,
     FLAG_MENU_RIGHT = 16384,
     /* A page of text (help, a character sheet): OK closes it. */
-    FLAG_TEXT_PAGE = 32768
+    FLAG_TEXT_PAGE = 32768,
+    /* Another list whose lit row the up and down arrows move. */
+    FLAG_ROW_CURSOR = 65536
 };
 
 /* ---- What the game is waiting for ------------------------------------- */
@@ -361,6 +363,23 @@ static int birth_page_flags(void)
     return flags;
 }
 
+/*
+ * A list whose lit row the up and down arrows move, other than a menu that
+ * lights one for OK (FLAG_MENU_LIST): a page of character creation that goes
+ * on with Return, whose arrows light a row and move it; the option and
+ * knowledge lists, as their footers say (in android/touch-text.c's words);
+ * Past Reckonings' list on a small screen; and the quest journal's list. A
+ * drag there moves the row with the finger, as in a menu; on a page of text
+ * it scrolls the text (TouchControlsView).
+ */
+static bool row_cursor(void)
+{
+    if (menu_reader != MENU_NONE && page_row_count > 0) return TRUE;
+    if (screen_shows("swipe to move") || screen_shows("swipe sideways to change it")) return TRUE;
+    if (screen_shows("Tap a row to read its results.")) return TRUE;
+    return page_row_lit && screen_shows("Quest journal");
+}
+
 static void current_context(int *mode, int *primary, int *flags, int *detail, cptr *keys)
 {
     *mode = current_mode(detail, keys);
@@ -375,6 +394,8 @@ static void current_context(int *mode, int *primary, int *flags, int *detail, cp
         if (menu_reader == MENU_RIGHT) *flags |= FLAG_MENU_RIGHT;
     } else if (doc_viewer_active()) {
         *flags |= FLAG_TEXT_PAGE;
+    } else if (row_cursor()) {
+        *flags |= FLAG_ROW_CURSOR;
     }
     if (!in_play()) return;
 

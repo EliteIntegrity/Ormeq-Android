@@ -133,8 +133,6 @@ class TouchControlsView(context: Context) : View(context) {
     private var padCentreTap = false
     /** The centre was held and has waited on its own: lifting it adds nothing. */
     private var centreRepeated = false
-    /** The hold has started repeating: a slide to another direction keeps its pace. */
-    private var padRepeating = false
     /** This press is over (the game asked something else, or a step went nowhere) until lifted. */
     private var padSpent = false
     private var dpad = Dpad(visible = false)
@@ -151,7 +149,6 @@ class TouchControlsView(context: Context) : View(context) {
     private val padHold = object : Runnable {
         override fun run() {
             if (padDirection == 0 || padSpent) return
-            padRepeating = true
             step(padDirection)
             handler.postDelayed(this, if (dpad.walks) WALK_REPEAT_MS else REPEAT_MS)
         }
@@ -165,10 +162,10 @@ class TouchControlsView(context: Context) : View(context) {
     }
 
     /**
-     * Held, the centre keeps waiting at the d-pad's pace until it is lifted,
-     * the pad hides (a -more-), a monster comes into view or the character is
-     * hurt (see setGameContext), as resting stops. Each wait is its own
-     * press, so it can stop between any two.
+     * Held, the centre keeps waiting at the d-pad's pace until it is lifted
+     * or slides off, the pad hides (a -more-), a monster comes into view or
+     * the character is hurt (see setGameContext), as resting stops. Each
+     * wait is its own press, so it can stop between any two.
      */
     private val centreHold = object : Runnable {
         override fun run() {
@@ -924,9 +921,8 @@ class TouchControlsView(context: Context) : View(context) {
             padPointer = id
             padCentreTap = hypot(x - padCx, y - padCy) < padR * DEAD_ZONE
             centreRepeated = false
-            padRepeating = false
             padSpent = false
-            updatePad(x, y)
+            pressPad(x, y)
             if (padCentreTap && dpad.centre != null) handler.postDelayed(centreHold, FIRST_REPEAT_MS)
             invalidate()
             return
@@ -966,7 +962,7 @@ class TouchControlsView(context: Context) : View(context) {
     private fun touchMove(event: MotionEvent) {
         if (padPointer != -1) {
             val padIndex = event.findPointerIndex(padPointer)
-            if (padIndex >= 0) updatePad(event.getX(padIndex), event.getY(padIndex))
+            if (padIndex >= 0) movePad(event.getX(padIndex), event.getY(padIndex))
         }
         if (pinchPointer != -1) {
             updatePinch(event)
@@ -1059,10 +1055,13 @@ class TouchControlsView(context: Context) : View(context) {
     private var swipeTurned = false
 
     /**
-     * Dragging up scrolls on (the down arrow), dragging down scrolls back, a
-     * line for each row of text the finger passes, so the text keeps up with
-     * it; a sideways swipe is one press of an arrow per gesture -- the next
-     * page, or a change of setting: towards the left is right, as a page turns.
+     * On a page of text, dragging up scrolls on (the down arrow) and dragging
+     * down scrolls back, a line for each row of text the finger passes, so the
+     * text keeps up with it. In a list, the lit row follows the finger
+     * instead, up as it goes up, as the d-pad's up moves it (0.1.1-android.2:
+     * it went down, which a player found backwards). A sideways swipe is one
+     * press of an arrow per gesture -- the next page, or a change of setting:
+     * towards the left is right, as a page turns.
      */
     private fun swipe(x: Float, y: Float) {
         val dx = x - swipeX
@@ -1084,12 +1083,13 @@ class TouchControlsView(context: Context) : View(context) {
             return
         }
         val line = max(dp(SWIPE_LINE_MIN_DP), metrics.cellHeight.toFloat())
+        val row = ControlLayouts.dragMovesRow(gameContext)
         while (abs(y - swipeY) > line && abs(dy) > abs(dx)) {
             if (y < swipeY) {
-                arrow(if (look) ']' else Keys.DOWN)
+                arrow(if (look) ']' else if (row) Keys.UP else Keys.DOWN)
                 swipeY -= line
             } else {
-                arrow(if (look) '[' else Keys.UP)
+                arrow(if (look) '[' else if (row) Keys.DOWN else Keys.UP)
                 swipeY += line
             }
         }
@@ -1332,42 +1332,35 @@ class TouchControlsView(context: Context) : View(context) {
         padPointer = -1
         padCentreTap = false
         centreRepeated = false
-        padRepeating = false
         padSpent = false
         padDirection = 0
     }
 
-    private fun updatePad(x: Float, y: Float) {
-        val dx = x - padCx
-        val dy = y - padCy
-        if (hypot(dx, dy) < padR * DEAD_ZONE) {
-            setPadDirection(0)
-            return
-        }
-        // Off the centre: no longer a wait.
-        if (padCentreTap) handler.removeCallbacks(centreHold)
-        padCentreTap = false
-        val angle = Math.toDegrees(atan2(dy, dx).toDouble()) + 360
+    /**
+     * A press on the pad is one input until it is lifted, as in other touch
+     * roguelikes (0.1.1-android.2, at a player's asking): the direction it
+     * lands on, which steps at once and, held, repeats; or the centre. The
+     * thumb sliding turns nothing, so one that drifts takes no step it was not
+     * meant to (in 0.1.1-android.1 the step turned to follow it).
+     */
+    private fun pressPad(x: Float, y: Float) {
+        if (padCentreTap) return
+        val angle = Math.toDegrees(atan2(y - padCy, x - padCx).toDouble()) + 360
         // Eight 45-degree sectors, clockwise from east.
         val digit = SECTOR_DIGITS[((angle + 22.5) / 45).toInt() % 8]
         // A list's pad has up and down only: the upper and lower three sectors.
-        setPadDirection(if (!dpad.list) digit else when (digit) { 7, 8, 9 -> 8; 1, 2, 3 -> 2; else -> 0 })
+        padDirection = if (!dpad.list) digit else when (digit) { 7, 8, 9 -> 8; 1, 2, 3 -> 2; else -> 0 }
+        if (padDirection == 0) return
+        step(padDirection)
+        handler.postDelayed(padHold, if (dpad.walks) WALK_FIRST_MS else FIRST_REPEAT_MS)
     }
 
-    private fun setPadDirection(digit: Int) {
-        if (digit == padDirection) return
-        padDirection = digit
+    /** A press on the centre that slides off it is let go: it waits no more, and lifting it adds nothing. */
+    private fun movePad(x: Float, y: Float) {
+        if (!padCentreTap || hypot(x - padCx, y - padCy) < padR * DEAD_ZONE) return
+        handler.removeCallbacks(centreHold)
+        padCentreTap = false
         invalidate()
-        if (padSpent) return
-        // Sliding round while it repeats turns at the same pace: the next step
-        // goes the new way.
-        if (padRepeating && digit != 0) return
-        handler.removeCallbacks(padHold)
-        padRepeating = false
-        if (digit != 0) {
-            step(digit)
-            handler.postDelayed(padHold, if (dpad.walks) WALK_FIRST_MS else FIRST_REPEAT_MS)
-        }
     }
 
     /**

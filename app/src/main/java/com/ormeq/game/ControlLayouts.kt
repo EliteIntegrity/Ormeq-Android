@@ -62,6 +62,12 @@ object ContextFlags {
     const val MENU_RIGHT = 16384
     /** A page of text (help, a character sheet): OK closes it. */
     const val TEXT_PAGE = 32768
+    /**
+     * Another list whose lit row the arrows move: a page of character creation
+     * that goes on with Return, the option and knowledge lists, the quest
+     * journal's and Past Reckonings'.
+     */
+    const val ROW_CURSOR = 65536
 }
 
 /** ITEM detail bits: what the item prompt offers (keep in step with android/ormeq-android.h). */
@@ -236,6 +242,14 @@ object ControlLayouts {
     fun swipes(context: GameContext) = context.mode == ControlMode.MENU || context.mode == ControlMode.NONE ||
         context.mode == ControlMode.LOOK || context.mode == ControlMode.RECKONING ||
         context.mode == ControlMode.QUEST_CARD
+
+    /**
+     * A vertical drag moves a lit row, which follows the finger as it goes
+     * the way the d-pad's up and down move it: a menu, the race and class
+     * lists, and the other lists whose arrows move a lit row. Elsewhere the
+     * drag scrolls, and the text follows the finger.
+     */
+    fun dragMovesRow(context: GameContext) = movesLitRow(context) || context.has(ContextFlags.ROW_CURSOR)
 
     /**
      * And a sideways swipe turns the page; in Look it goes to the next or the

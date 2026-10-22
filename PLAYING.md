@@ -35,8 +35,10 @@ Without a keyboard, help is in **More**, under Game.
   that. The full map screen is in More, under Knowledge.
 - **The d-pad**, bottom left: tap to step, hold to walk. Walking stops when you
   lift your finger, the game asks something or the way is blocked; walking
-  into a monster attacks it. Its centre is **Wait**: tap to wait a turn, hold to
-  keep waiting until a monster comes into view or you are hurt.
+  into a monster attacks it. A press keeps the direction it started on until
+  you lift your finger: sliding your thumb does not turn it. Its centre is
+  **Wait**: tap to wait a turn, hold to keep waiting until a monster comes
+  into view or you are hurt; slide off the centre to cancel.
 - **The cluster**, bottom right: one large button and three around it, offering
   what can be done now. Where you stand, the large button is Get, Down, Up,
   Enter, Open or Rest, with your ranged attack (Cast, Fire or Throw), **Look**
@@ -66,10 +68,12 @@ Without a keyboard, help is in **More**, under Game.
   More drawer.
 - **Menus and lists** always have one choice highlighted, starting on your
   current one. **OK** takes it, and the d-pad's up and down move the
-  highlight; or tap a choice to take it at once. In character creation, hold
-  a choice for its help; on the summary and stats pages, **OK** goes on.
-- **Screens of text**: drag to scroll, swipe sideways to turn the page. PgUp,
-  PgDn and Back are in the cluster, and **OK** closes the page.
+  highlight, as does a drag: the highlight follows your finger. Or tap a
+  choice to take it at once. In character creation, hold a choice for its
+  help; on the summary and stats pages, **OK** goes on.
+- **Screens of text**: drag to scroll (the text follows your finger), swipe
+  sideways to turn the page. PgUp, PgDn and Back are in the cluster, and
+  **OK** closes the page.
 
 ## Look at a creature
 

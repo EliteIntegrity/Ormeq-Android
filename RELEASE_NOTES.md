@@ -1,4 +1,26 @@
-# Ormeq for Android 0.1.1-android.1
+# Ormeq for Android 0.1.1-android.2
+
+An Android-only update: the game is still Ormeq 0.1.1, as on Windows. It
+brings two changes to the touch controls that a player asked for.
+
+- **Dragging in a menu or list moves the highlight with your finger.** Drag
+  up and the highlight goes up; drag down and it goes down, as the d-pad's
+  up and down move it. Before, it went the opposite way, as if the drag were
+  scrolling text. This covers the menus, character creation (including the
+  summary and stats pages, where a drag highlights a row), the option and
+  knowledge lists, the quest journal's list and the Past Reckonings list.
+  On help and other pages of text, a drag still scrolls the text with your
+  finger.
+- **One direction per press on the d-pad.** A press keeps the direction it
+  started on until you lift your finger: sliding your thumb no longer turns
+  your character, so a drifting thumb takes no step you did not mean. Holding
+  still walks, in that one direction. A press on the centre (Wait) that
+  slides off it is cancelled: no wait, and no step.
+
+Gameplay and saves are unchanged. It installs over 0.1.1-android.1, 0.1.1
+or 0.1.0 and keeps your characters.
+
+## Ormeq for Android 0.1.1-android.1
 
 An Android-only update: the game is still Ormeq 0.1.1, as on Windows, and
 the next Windows version brings the two version numbers back together.

@@ -140,6 +140,15 @@ android/context.c sends), and goes if even a small one would not; before play
 no rail is drawn, and it may use the rail's strip. On a page of text OK
 closes the page, which is all there is to do there.
 
+A drag moves the lit row with the finger, up as it goes up, as the d-pad's up
+does. That holds wherever the arrows move a lit row: the menus, the race and
+class lists, the summary and stats pages (where a drag lights a row), the
+option and knowledge lists, the quest journal's list, and Past Reckonings' on
+a narrow screen (android/context.c's `FLAG_ROW_CURSOR`, which knows the last
+four by their footers and title). On a page of text a drag scrolls, and the
+text follows the finger. Until 0.1.1-android.2 a drag up moved a lit row
+down, as if it scrolled, which a player found backwards.
+
 Character creation has two pages that go on with Return, as their footers
 say ("RET) Next Screen", "RET) Begin Play"): the summary and the stats. Their
 rows are changes to make, so they get no lit row and no d-pad, their OK goes
@@ -147,6 +156,16 @@ on, and their rows are tapped. Random is there where a page lists "*", and
 Info (Tab) where it shows the race and class summary. An OK that did nothing,
 on the first page in 0.1.0, made the game look frozen; one missing, in
 0.1.1, made a player tap rows they would rather have chosen with OK.
+
+## One press, one direction
+
+A press on the d-pad keeps the direction it lands on until it is lifted, as
+other touch roguelikes do (the player who asked named Brogue, GnollHack and
+DCSS): the thumb sliding turns nothing, so a drifting thumb takes no step it
+was not meant to, and held, the press repeats that one direction. A press on
+the centre waits when lifted, or held keeps waiting; one that slides off the
+centre is let go and waits no more. Until 0.1.1-android.2 a slide turned the
+step, and a slide off the centre walked.
 
 ## Tidying
 
