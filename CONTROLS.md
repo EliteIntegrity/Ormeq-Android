@@ -149,6 +149,14 @@ four by their footers and title). On a page of text a drag scrolls, and the
 text follows the finger. Until 0.1.1-android.2 a drag up moved a lit row
 down, as if it scrolled, which a player found backwards.
 
+A page of options takes a sideways swipe, which changes the lit option (left
+and right), as its footer says: Settings' option pages, and Birth options in
+character creation too, where elsewhere sideways swipes are off because the
+right arrow chooses (context.c's `FLAG_OPTION_PAGE`; until 0.1.2 nothing on
+Birth options could change one). Birth options declares no rows of its own,
+so the summary's, still declared under it, gave it a Random that did nothing;
+context.c leaves character creation's page flags off there.
+
 Character creation has two pages that go on with Return, as their footers
 say ("RET) Next Screen", "RET) Begin Play"): the summary and the stats. Their
 rows are changes to make, so they get no lit row and no d-pad, their OK goes

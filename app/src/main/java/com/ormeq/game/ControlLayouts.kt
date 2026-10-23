@@ -68,6 +68,8 @@ object ContextFlags {
      * journal's and Past Reckonings'.
      */
     const val ROW_CURSOR = 65536
+    /** A page of options (Birth options too): left and right change the lit one. */
+    const val OPTION_PAGE = 131072
 }
 
 /** ITEM detail bits: what the item prompt offers (keep in step with android/ormeq-android.h). */
@@ -254,10 +256,12 @@ object ControlLayouts {
     /**
      * And a sideways swipe turns the page; in Look it goes to the next or the
      * previous thing in view. Not before play: on the start and character
-     * creation screens the right arrow chooses.
+     * creation screens the right arrow chooses -- except on Birth options, a
+     * page of options like any other, where it changes the lit one (in
+     * 0.1.1-android.2 nothing there could).
      */
     fun swipesSideways(context: GameContext) = context.mode == ControlMode.MENU || context.mode == ControlMode.LOOK ||
-        context.mode == ControlMode.RECKONING
+        context.mode == ControlMode.RECKONING || context.has(ContextFlags.OPTION_PAGE)
 
     /**
      * Holding a row means something: a spell goes on the bar; in character

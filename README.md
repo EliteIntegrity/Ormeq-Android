@@ -13,12 +13,12 @@ systems with a modern SDL3 interface and its own setting, shared with
 **Ammerow: Lands Beyond**. On Android it is the same game as on Windows,
 version for version, with touch controls of its own.
 
-**[Download Ormeq for Android](https://github.com/EliteIntegrity/Ormeq-Android/releases/download/v0.1.1-android.2/Ormeq-0.1.1-android.2.apk)**
+**[Download Ormeq for Android](https://github.com/EliteIntegrity/Ormeq-Android/releases/download/v0.1.2/Ormeq-0.1.2-android.apk)**
 &nbsp; · &nbsp; [Release notes](RELEASE_NOTES.md)
 &nbsp; · &nbsp; [Playing guide](PLAYING.md)
 
-**Version 0.1.1-android.2 is the latest Android release:** Ormeq 0.1.1, as on
-Windows, with touch improvements of its own. Free to play and offline,
+**Version 0.1.2 is the latest Android release:** Ormeq 0.1.2, the same
+version as on Windows. Free to play and offline,
 with no ads, account or purchases. It runs on Android 8.0 or later on 64-bit
 phones, tablets and foldables, and installs straight from the APK.
 
@@ -94,7 +94,7 @@ on an emulated phone. Tap or click any screenshot to see it at full size.*
 ## Start playing
 
 1. On your phone or tablet,
-   [download the APK](https://github.com/EliteIntegrity/Ormeq-Android/releases/download/v0.1.1-android.2/Ormeq-0.1.1-android.2.apk).
+   [download the APK](https://github.com/EliteIntegrity/Ormeq-Android/releases/download/v0.1.2/Ormeq-0.1.2-android.apk).
 2. Open it. If Android asks, allow your browser or file manager to install
    apps, then choose **Install**. Nothing else needs installing.
 3. Open **Ormeq** and choose **New character**. **Menu**, top left, has the

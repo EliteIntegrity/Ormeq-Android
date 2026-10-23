@@ -1,4 +1,24 @@
-# Ormeq for Android 0.1.1-android.2
+# Ormeq for Android 0.1.2
+
+Birth options fixes, with the game at Ormeq 0.1.2 as on Windows (its
+[release notes](https://github.com/EliteIntegrity/Ormeq/blob/v0.1.2/RELEASE_NOTES.md)).
+The Android edition's version number is in step with Windows again.
+
+- From Ormeq 0.1.2: a new character's birth options can be changed after
+  playing another one. Starting a character after going back to the start
+  screen, the Birth options page said the game was already under way and
+  could only be read, until the app was closed and opened again. They stay
+  locked for a character in play.
+- On Android, Birth options in character creation (Options on the summary
+  page) now takes a sideways swipe to change the highlighted option, as the
+  page says. Before, swipes did nothing there, so birth options could not be
+  changed by touch at all. The page's Random button, which did nothing, is
+  gone.
+
+Gameplay and saves are unchanged. 0.1.2 installs over 0.1.1-android.2 and
+earlier releases and keeps your characters.
+
+## Ormeq for Android 0.1.1-android.2
 
 An Android-only update: the game is still Ormeq 0.1.1, as on Windows. It
 brings two changes to the touch controls that a player asked for.

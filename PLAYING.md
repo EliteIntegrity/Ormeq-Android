@@ -70,7 +70,8 @@ Without a keyboard, help is in **More**, under Game.
   current one. **OK** takes it, and the d-pad's up and down move the
   highlight, as does a drag: the highlight follows your finger. Or tap a
   choice to take it at once. In character creation, hold a choice for its
-  help; on the summary and stats pages, **OK** goes on.
+  help; on the summary and stats pages, **OK** goes on. On pages of options,
+  Birth options among them, swipe sideways to change the highlighted one.
 - **Screens of text**: drag to scroll (the text follows your finger), swipe
   sideways to turn the page. PgUp, PgDn and Back are in the cluster, and
   **OK** closes the page.

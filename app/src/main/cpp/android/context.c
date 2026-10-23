@@ -65,7 +65,9 @@ enum context_flag {
     /* A page of text (help, a character sheet): OK closes it. */
     FLAG_TEXT_PAGE = 32768,
     /* Another list whose lit row the up and down arrows move. */
-    FLAG_ROW_CURSOR = 65536
+    FLAG_ROW_CURSOR = 65536,
+    /* A page of options, whose values left and right change. */
+    FLAG_OPTION_PAGE = 131072
 };
 
 /* ---- What the game is waiting for ------------------------------------- */
@@ -364,6 +366,17 @@ static int birth_page_flags(void)
 }
 
 /*
+ * A page of options, as its footer says (android/touch-text.c's words):
+ * left and right change the lit one, which a sideways swipe sends, in
+ * character creation too, where elsewhere right chooses (TouchControlsView).
+ * Character creation's Birth options is one, opened from its summary.
+ */
+static bool option_page(void)
+{
+    return screen_shows("swipe sideways to change it");
+}
+
+/*
  * A list whose lit row the up and down arrows move, other than a menu that
  * lights one for OK (FLAG_MENU_LIST): a page of character creation that goes
  * on with Return, whose arrows light a row and move it; the option and
@@ -375,20 +388,25 @@ static int birth_page_flags(void)
 static bool row_cursor(void)
 {
     if (menu_reader != MENU_NONE && page_row_count > 0) return TRUE;
-    if (screen_shows("swipe to move") || screen_shows("swipe sideways to change it")) return TRUE;
+    if (screen_shows("swipe to move") || option_page()) return TRUE;
     if (screen_shows("Tap a row to read its results.")) return TRUE;
     return page_row_lit && screen_shows("Quest journal");
 }
 
 static void current_context(int *mode, int *primary, int *flags, int *detail, cptr *keys)
 {
+    bool options = option_page();
+
     *mode = current_mode(detail, keys);
     *primary = PRIMARY_REST;
     *flags = 0;
     if (ui_screen_phase() == UI_PHASE_BIRTH) {
         *flags |= FLAG_BIRTH;
-        if (*mode == MODE_NONE) *flags |= birth_page_flags();
+        /* Not on Birth options: it declares no rows of its own, so the rows
+         * seen are the summary's, under it -- Random among them. */
+        if (*mode == MODE_NONE && !options) *flags |= birth_page_flags();
     }
+    if (options) *flags |= FLAG_OPTION_PAGE;
     if (menu_list()) {
         *flags |= FLAG_MENU_LIST;
         if (menu_reader == MENU_RIGHT) *flags |= FLAG_MENU_RIGHT;
