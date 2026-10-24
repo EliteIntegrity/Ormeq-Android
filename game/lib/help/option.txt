@@ -206,6 +206,9 @@ If this option is on, numpad keys are interpreted as cursor-movement keys rather
 
 <topic:use_pack_slots><color:U>Retain backpack slot labels in other inventories</color> <color:D>(use_pack_slots)</color>
 If this option is on, inventory items will have the same default label keys in all object prompts; for example, if a scroll is the ninth item in your backpack and accordingly labeled <color:B>i)</color> for the Show Inventory command, then it will also be labeled <color:B>i)</color> for the Read Scroll command, even if you have no other scrolls. If this option is off, each object prompt recomputes the labels, counting the relevant items only; the example scroll would still be <color:B>i)</color> for Show Inventory, but <color:B>a)</color> in the Read Scroll prompt. Having the option off reduces the risk of objects unexpectedly changing labels between successive calls to a command; the scroll could only be bumped to <color:B>b)</color> by the addition of another scroll, the appearance (or disappearance) of a potion or spellbook would have no effect on its label. (Either way, the only fully reliable way to ensure items retain their expected slots is to inscribe them accordingly; see <link:objects.txt#Inscriptions> for help.)
+
+<topic:s_deco><color:U>s_deco (square/Numpad shaped)</color>
+On a touch screen, the d-pad is a square of nine keys, three by three, laid out like a keyboard's numpad: the eight directions around the edge, each with its arrow, and <color:keyword>Wait</color> in the middle. A press takes the key it lands on and keeps it until it is lifted; held, a direction walks. With this option off, the d-pad is round. Unlike the other options, it is not kept with each character: the last setting chosen holds for every character, new or loaded.
 </indent>
 <topic:MapScreen><style:heading>Map & Screen Options</style>
   <indent>

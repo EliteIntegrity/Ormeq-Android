@@ -159,3 +159,15 @@ readers missed the Settings and Escape menus, whose calls the compiler
 inlines.
 
 Files: `game/src/externs.h`, `game/src/ui_menus.c`.
+
+## 0016 Option s_deco: a square, numpad-shaped d-pad
+
+A game option on the Input page, "s_deco (square/Numpad shaped)", described in
+`lib/help/option.txt`. It takes the last bit of the last option set (7, 31),
+clear of the ones the desktop takes next: a save without it loads as off, and
+the desktop ignores it in a save. android/context.c passes it to the controls,
+which then draw the d-pad as nine keys, three by three, as on a numpad, and
+holds every character to the last setting chosen, which the app remembers.
+
+Files: `game/lib/help/option.txt`, `game/src/externs.h`, `game/src/tables.c`,
+`game/src/variable.c`.

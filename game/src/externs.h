@@ -277,6 +277,7 @@ extern bool auto_map_area;
 extern bool limit_shop_prompts;
 extern bool numpad_as_cursorkey;    /* Use numpad keys as cursor key in editor mode */
 extern bool use_pack_slots;
+extern bool s_deco;    /* Square (numpad) d-pad on a touch screen */
 
 
 /*** Map Screen Options ***/
@@ -2132,6 +2133,10 @@ extern bool start_screen_shown(void);
 extern void    ui_escape_menu(void);
 extern void    ui_effects_show(void);
 extern void    ui_settings_menu(void);
+extern void  (*ui_settings_host_rows)(doc_ptr doc);
+extern bool  (*ui_settings_host_key)(int key); /* TRUE if handled */
+extern void    ui_settings_row(doc_ptr doc, char key, cptr label, cptr value);
+extern void    ui_settings_section(doc_ptr doc, cptr name);
 extern int  ui_menu_inkey(doc_ptr doc);
 extern int  ui_menu_inkey_nav(doc_ptr doc);
 extern bool (*ui_menu_hook)(doc_ptr doc, bool claim_return);

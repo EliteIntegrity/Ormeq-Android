@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Handler
@@ -106,6 +107,20 @@ class TouchControlsView(context: Context) : View(context) {
     /** How many rows of slots are up: the player's choice, kept for the device. */
     private val preferences = context.getSharedPreferences("controls", Context.MODE_PRIVATE)
     private var rows = preferences.getInt("barRows", 1).coerceIn(1, ROWS_MAX)
+
+    init {
+        // The square d-pad, as last set (option s_deco), for every character:
+        // the game takes it before it first waits for a key.
+        if (preferences.contains(SQUARE_PAD_KEY)) {
+            NativeBridge.setSquarePad(preferences.getBoolean(SQUARE_PAD_KEY, false))
+        }
+    }
+
+    /** Keeps the square d-pad setting, which the game holds every character to (android/context.c). */
+    private fun rememberSquarePad(square: Boolean) {
+        if (preferences.contains(SQUARE_PAD_KEY) && preferences.getBoolean(SQUARE_PAD_KEY, false) == square) return
+        preferences.edit().putBoolean(SQUARE_PAD_KEY, square).apply()
+    }
 
     /** A phone shows two rows at most: three leave too little of its map. */
     private fun tablet() = resources.configuration.smallestScreenWidthDp >= TABLET_DP
@@ -248,6 +263,7 @@ class TouchControlsView(context: Context) : View(context) {
 
     fun setGameContext(context: GameContext) {
         if (context == gameContext) return
+        rememberSquarePad(context.has(ContextFlags.SQUARE_PAD))
         val wasMore = gameContext.mode == ControlMode.MORE
         if (wasMore && context.mode != ControlMode.MORE) messagesEndedAt = SystemClock.uptimeMillis()
         val inPlayChanged = context.has(ContextFlags.IN_PLAY) != gameContext.has(ContextFlags.IN_PLAY)
@@ -334,7 +350,8 @@ class TouchControlsView(context: Context) : View(context) {
             // The point of the row nearest the pad's centre.
             val x = cx.coerceIn(left, right)
             val y = cy.coerceIn(top, bottom)
-            if (hypot(x - cx, y - cy) < r + dp(4f)) return true
+            val distance = if (dpad.square) max(abs(x - cx), abs(y - cy)) else hypot(x - cx, y - cy)
+            if (distance < r + dp(4f)) return true
         }
         return false
     }
@@ -760,6 +777,27 @@ class TouchControlsView(context: Context) : View(context) {
     }
 
     private fun drawPad(canvas: Canvas) {
+        if (dpad.square) drawSquarePad(canvas) else drawRoundPad(canvas)
+        dpad.label?.let {
+            val size = text.textSize
+            text.textSize = dp(11f)
+            text.color = Color.argb(255, 240, 168, 80)
+            canvas.drawText(it, padCx, padCy - (text.descent() + text.ascent()) / 2, text)
+            text.color = Color.argb(240, 242, 238, 228)
+            text.textSize = size
+        }
+        dpad.centre?.let {
+            // As faint as the direction marks, brighter while pressed.
+            val size = text.textSize
+            text.textSize = dp(12f)
+            text.color = Color.argb(if (padCentreTap) 235 else 125, 242, 238, 228)
+            canvas.drawText(it, padCx, padCy - (text.descent() + text.ascent()) / 2, text)
+            text.color = Color.argb(240, 242, 238, 228)
+            text.textSize = size
+        }
+    }
+
+    private fun drawRoundPad(canvas: Canvas) {
         val aiming = dpad.label != null
         fill.color = Color.argb(110, 10, 14, 11)
         canvas.drawCircle(padCx, padCy, padR, fill)
@@ -780,23 +818,74 @@ class TouchControlsView(context: Context) : View(context) {
             fill.color = Color.argb(120, 240, 150, 60)
             canvas.drawCircle(padCx, padCy, padR * DEAD_ZONE, fill)
         }
-        dpad.label?.let {
-            val size = text.textSize
-            text.textSize = dp(11f)
-            text.color = Color.argb(255, 240, 168, 80)
-            canvas.drawText(it, padCx, padCy - (text.descent() + text.ascent()) / 2, text)
-            text.color = Color.argb(240, 242, 238, 228)
-            text.textSize = size
+    }
+
+    /**
+     * The square pad (option s_deco): nine keys, three by three, as on a
+     * keyboard's numpad, an arrow on each direction and the centre's word
+     * (Wait) in the middle. A list's has only its up and down keys; the rest
+     * are faint and empty.
+     */
+    private fun drawSquarePad(canvas: Canvas) {
+        val aiming = dpad.label != null
+        val key = 2 * padR / 3
+        val gap = min(dp(3f), key * 0.08f)
+        val corner = min(dp(7f), key * 0.18f)
+        for (index in NUMPAD.indices) {
+            val digit = NUMPAD[index]
+            val live = !dpad.list || digit == 8 || digit == 2
+            val pressed = if (digit == 5) padCentreTap else digit == padDirection
+            val left = padCx - padR + (index % 3) * key
+            val top = padCy - padR + (index / 3) * key
+            keyRect.set(left + gap / 2, top + gap / 2, left + key - gap / 2, top + key - gap / 2)
+            fill.color = when {
+                pressed -> Color.argb(150, 240, 150, 60)
+                live -> Color.argb(110, 10, 14, 11)
+                else -> Color.argb(55, 10, 14, 11)
+            }
+            canvas.drawRoundRect(keyRect, corner, corner, fill)
+            stroke.color = when {
+                !live -> Color.argb(45, 255, 255, 255)
+                aiming -> Color.argb(220, 240, 168, 80)
+                else -> Color.argb(110, 255, 255, 255)
+            }
+            canvas.drawRoundRect(keyRect, corner, corner, stroke)
+            if (digit == 5 || !live) continue
+            fill.color = when {
+                pressed -> Color.argb(240, 242, 238, 228)
+                aiming -> Color.argb(200, 240, 168, 80)
+                else -> Color.argb(150, 255, 255, 255)
+            }
+            drawArrow(canvas, keyRect.centerX(), keyRect.centerY(), key * 0.46f, digit)
         }
-        dpad.centre?.let {
-            // As faint as the direction marks, brighter while pressed.
-            val size = text.textSize
-            text.textSize = dp(12f)
-            text.color = Color.argb(if (padCentreTap) 235 else 125, 242, 238, 228)
-            canvas.drawText(it, padCx, padCy - (text.descent() + text.ascent()) / 2, text)
-            text.color = Color.argb(240, 242, 238, 228)
-            text.textSize = size
-        }
+    }
+
+    private val keyRect = RectF()
+
+    /** An arrow one unit long, pointing right, centred on the origin. */
+    private val arrowPath = Path().apply {
+        val shaft = 0.08f // half the shaft's thickness
+        val head = 0.42f
+        val wing = 0.34f // half the head's width
+        moveTo(-0.5f, -shaft)
+        lineTo(0.5f - head, -shaft)
+        lineTo(0.5f - head, -wing)
+        lineTo(0.5f, 0f)
+        lineTo(0.5f - head, wing)
+        lineTo(0.5f - head, shaft)
+        lineTo(-0.5f, shaft)
+        close()
+    }
+
+    /** An arrow [length] long centred there, pointing the way of keypad [digit], in [fill]'s colour. */
+    private fun drawArrow(canvas: Canvas, cx: Float, cy: Float, length: Float, digit: Int) {
+        val (dx, dy) = offsetOf(digit)
+        canvas.save()
+        canvas.translate(cx, cy)
+        canvas.rotate(Math.toDegrees(atan2(dy, dx).toDouble()).toFloat())
+        canvas.scale(length, length)
+        canvas.drawPath(arrowPath, fill)
+        canvas.restore()
     }
 
     /** [faint]: a light veil and an edge, the label outlined to read over the map. */
@@ -917,9 +1006,9 @@ class TouchControlsView(context: Context) : View(context) {
         // At the map a touch a little outside the ring still counts: a thumb
         // finds the pad by feel.
         val reach = if (gameContext.mode == ControlMode.MAP) PAD_REACH_MAP else PAD_REACH
-        if (padShown && padPointer == -1 && hypot(x - padCx, y - padCy) <= padR * reach) {
+        if (padShown && padPointer == -1 && onPad(x, y, reach)) {
             padPointer = id
-            padCentreTap = hypot(x - padCx, y - padCy) < padR * DEAD_ZONE
+            padCentreTap = onPadCentre(x, y)
             centreRepeated = false
             padSpent = false
             pressPad(x, y)
@@ -1345,19 +1434,51 @@ class TouchControlsView(context: Context) : View(context) {
      */
     private fun pressPad(x: Float, y: Float) {
         if (padCentreTap) return
-        val angle = Math.toDegrees(atan2(y - padCy, x - padCx).toDouble()) + 360
-        // Eight 45-degree sectors, clockwise from east.
-        val digit = SECTOR_DIGITS[((angle + 22.5) / 45).toInt() % 8]
-        // A list's pad has up and down only: the upper and lower three sectors.
-        padDirection = if (!dpad.list) digit else when (digit) { 7, 8, 9 -> 8; 1, 2, 3 -> 2; else -> 0 }
+        val digit = if (dpad.square) keyDigit(x, y) else sectorDigit(x, y)
+        // A list's pad has up and down only: the round one's upper and lower
+        // three sectors, the square one's up and down keys.
+        padDirection = when {
+            !dpad.list -> digit
+            dpad.square -> if (digit == 8 || digit == 2) digit else 0
+            else -> when (digit) { 7, 8, 9 -> 8; 1, 2, 3 -> 2; else -> 0 }
+        }
         if (padDirection == 0) return
         step(padDirection)
         handler.postDelayed(padHold, if (dpad.walks) WALK_FIRST_MS else FIRST_REPEAT_MS)
     }
 
+    /** The round pad: eight 45-degree sectors, clockwise from east. */
+    private fun sectorDigit(x: Float, y: Float): Int {
+        val angle = Math.toDegrees(atan2(y - padCy, x - padCx).toDouble()) + 360
+        return SECTOR_DIGITS[((angle + 22.5) / 45).toInt() % 8]
+    }
+
+    /**
+     * The square pad (option s_deco): the key under the touch, as on a
+     * keyboard's numpad, 7 8 9 above and 1 2 3 below. A touch just outside
+     * takes the nearest key on the edge.
+     */
+    private fun keyDigit(x: Float, y: Float): Int {
+        val key = 2 * padR / 3
+        val column = ((x - (padCx - padR)) / key).toInt().coerceIn(0, 2)
+        val row = ((y - (padCy - padR)) / key).toInt().coerceIn(0, 2)
+        return NUMPAD[row * 3 + column]
+    }
+
+    /** Whether a touch takes the pad, out to [reach] radii (the square's half side). */
+    private fun onPad(x: Float, y: Float, reach: Float) = if (dpad.square) {
+        max(abs(x - padCx), abs(y - padCy)) <= padR * reach
+    } else {
+        hypot(x - padCx, y - padCy) <= padR * reach
+    }
+
+    /** The round pad's middle ring, or the square's middle key. */
+    private fun onPadCentre(x: Float, y: Float) =
+        if (dpad.square) keyDigit(x, y) == 5 && onPad(x, y, 1f) else hypot(x - padCx, y - padCy) < padR * DEAD_ZONE
+
     /** A press on the centre that slides off it is let go: it waits no more, and lifting it adds nothing. */
     private fun movePad(x: Float, y: Float) {
-        if (!padCentreTap || hypot(x - padCx, y - padCy) < padR * DEAD_ZONE) return
+        if (!padCentreTap || onPadCentre(x, y)) return
         handler.removeCallbacks(centreHold)
         padCentreTap = false
         invalidate()
@@ -1407,5 +1528,8 @@ class TouchControlsView(context: Context) : View(context) {
         const val SWIPE_PAGE_DP = 72f
         // atan2 sectors from east, clockwise (screen y grows downwards).
         val SECTOR_DIGITS = intArrayOf(6, 3, 2, 1, 4, 7, 8, 9)
+        // The square pad's keys, row by row from the top, as on a numpad.
+        val NUMPAD = intArrayOf(7, 8, 9, 4, 5, 6, 1, 2, 3)
+        const val SQUARE_PAD_KEY = "squarePad"
     }
 }

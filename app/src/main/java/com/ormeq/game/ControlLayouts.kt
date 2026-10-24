@@ -70,6 +70,8 @@ object ContextFlags {
     const val ROW_CURSOR = 65536
     /** A page of options (Birth options too): left and right change the lit one. */
     const val OPTION_PAGE = 131072
+    /** The d-pad is the square one, laid out like a numpad (the game's option s_deco). */
+    const val SQUARE_PAD = 262144
 }
 
 /** ITEM detail bits: what the item prompt offers (keep in step with android/ormeq-android.h). */
@@ -160,12 +162,14 @@ data class Cluster(val primary: Command?, val quick: List<Command?>)
  * stop. [centre]: what a tap on the centre does, said faintly there (Wait).
  */
 /** [list]: a menu's, whose up and down move its lit row (arrow keys) and nothing else. */
+/** [square]: nine keys, three by three, as on a keyboard's numpad (the game's option s_deco). */
 data class Dpad(
     val visible: Boolean,
     val walks: Boolean = false,
     val label: String? = null,
     val centre: String? = null,
     val list: Boolean = false,
+    val square: Boolean = false,
 )
 
 object ControlLayouts {
@@ -220,7 +224,7 @@ object ControlLayouts {
         // row, which OK chooses (Ammerow's way; android/context.c lights one).
         movesLitRow(context) -> Dpad(visible = true, list = true)
         else -> modeDpad(context)
-    }
+    }.copy(square = context.has(ContextFlags.SQUARE_PAD))
 
     private fun movesLitRow(context: GameContext) = context.has(ContextFlags.MENU_LIST) ||
         (context.mode == ControlMode.NONE && context.has(ContextFlags.BIRTH) && context.has(ContextFlags.PAGE_CURSOR))

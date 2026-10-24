@@ -67,7 +67,9 @@ enum context_flag {
     /* Another list whose lit row the up and down arrows move. */
     FLAG_ROW_CURSOR = 65536,
     /* A page of options, whose values left and right change. */
-    FLAG_OPTION_PAGE = 131072
+    FLAG_OPTION_PAGE = 131072,
+    /* The d-pad is the square one, a numpad (option s_deco, change 0016). */
+    FLAG_SQUARE_PAD = 262144
 };
 
 /* ---- What the game is waiting for ------------------------------------- */
@@ -393,6 +395,53 @@ static bool row_cursor(void)
     return page_row_lit && screen_shows("Quest journal");
 }
 
+/*
+ * The square d-pad (option s_deco, change 0016) is the player's, not a
+ * character's: the app remembers the last setting and gives it here at
+ * startup (TouchControlsView), and every character, new or loaded, keeps to
+ * it. A change on the options page, or in Settings (touch_settings_key),
+ * becomes the setting; anything else that changes the option -- a save made
+ * with the other value, a pref file -- gives way to it. -1 until there is one
+ * to remember.
+ */
+static SDL_AtomicInt square_pad_setting = { -1 };
+static int square_pad_seen = -1;
+
+static void keep_square_pad(bool options)
+{
+    int setting = SDL_GetAtomicInt(&square_pad_setting);
+
+    if (setting < 0)
+        SDL_CompareAndSwapAtomicInt(&square_pad_setting, -1, s_deco ? 1 : 0);
+    else if ((s_deco ? 1 : 0) != square_pad_seen && options)
+        SDL_SetAtomicInt(&square_pad_setting, s_deco ? 1 : 0);
+    else
+        s_deco = setting ? TRUE : FALSE;
+    square_pad_seen = s_deco ? 1 : 0;
+}
+
+/*
+ * Settings' Touch section, through the desktop's hooks for a host's own rows
+ * (0.1.3), on the start screen and in play alike: the d-pad's shape, the
+ * option s_deco by the name its player gave it. The desktop keeps p for it.
+ */
+static void touch_settings_rows(doc_ptr doc)
+{
+    doc_newline(doc);
+    ui_settings_section(doc, "Touch");
+    ui_settings_row(doc, 'p', "s_deco", s_deco ? "square/Numpad shaped" : "round");
+}
+
+static bool touch_settings_key(int key)
+{
+    if (key != 'p' && key != 'P') return FALSE;
+    s_deco = !s_deco;
+    /* The player's choice, as on the options page: it becomes the setting. */
+    SDL_SetAtomicInt(&square_pad_setting, s_deco ? 1 : 0);
+    square_pad_seen = s_deco ? 1 : 0;
+    return TRUE;
+}
+
 static void current_context(int *mode, int *primary, int *flags, int *detail, cptr *keys)
 {
     bool options = option_page();
@@ -407,6 +456,11 @@ static void current_context(int *mode, int *primary, int *flags, int *detail, cp
         if (*mode == MODE_NONE && !options) *flags |= birth_page_flags();
     }
     if (options) *flags |= FLAG_OPTION_PAGE;
+    /* On every screen, the start screen's and character creation's too: an
+     * option keeps the value the last character left until another is
+     * loaded (the game sets defaults once, at startup). */
+    keep_square_pad(options);
+    if (s_deco) *flags |= FLAG_SQUARE_PAD;
     if (menu_list()) {
         *flags |= FLAG_MENU_LIST;
         if (menu_reader == MENU_RIGHT) *flags |= FLAG_MENU_RIGHT;
@@ -1226,6 +1280,8 @@ void ormeq_android_init(void)
     sdl3_click_hook = click_hook;
     sdl3_look_label_hook = ormeq_touch_label;
     ui_menu_hook = menu_hook;
+    ui_settings_host_rows = touch_settings_rows;
+    ui_settings_host_key = touch_settings_key;
     ui_touch = TRUE;
     ormeq_items_init();
     ormeq_pins_init();
@@ -1342,6 +1398,15 @@ JNIEXPORT void JNICALL Java_com_ormeq_game_NativeBridge_setGridInsets(JNIEnv *en
     (void)cls;
     sdl3_set_grid_insets(left, right);
     ormeq_wake_game();   /* this can come before the game is running */
+}
+
+/* The square d-pad setting the app remembers (keep_square_pad). Any thread. */
+JNIEXPORT void JNICALL Java_com_ormeq_game_NativeBridge_setSquarePad(JNIEnv *env, jclass cls,
+    jboolean square)
+{
+    (void)env;
+    (void)cls;
+    SDL_SetAtomicInt(&square_pad_setting, square ? 1 : 0);
 }
 
 /* Zoom by notches of the mouse wheel, as the desktop does: + in, - out. Any thread. */

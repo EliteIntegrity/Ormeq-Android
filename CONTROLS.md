@@ -175,6 +175,28 @@ the centre waits when lifted, or held keeps waiting; one that slides off the
 centre is let go and waits no more. Until 0.1.1-android.2 a slide turned the
 step, and a slide off the centre walked.
 
+## The square d-pad
+
+The game's option "s_deco (square/Numpad shaped)" on the Input page (patch
+0016; the user's own name for it) makes the d-pad a square of nine keys, three
+by three, laid out as on a keyboard's numpad: 7 8 9 above, 1 2 3 below, each
+direction with its arrow, and the centre's word (Wait at the map, fire when
+aiming) in the middle key. It fills the square the round pad sits in, so
+nothing else moves; a key is a third of its side (48 dp on a phone, 59 dp on a
+tablet). A press takes the key it lands on, a touch just outside the square
+the nearest key on its edge, and one press is one key until lifted, as for the
+round pad. A menu's pad keeps only its up and down keys, the others faint and
+empty, and it fits beside a menu's rows by its square. Unlike the game's other
+options it is the player's, not a character's: the app remembers the last
+setting and gives it to the game at startup, and android/context.c holds every
+character, new or loaded, to it. A change on the options page becomes the
+setting; a save made with the other value, or a pref file, gives way to it. So
+the start screen shows it too (`FLAG_SQUARE_PAD`). It is also Settings' Touch
+section, `p) s_deco` with the value "square/Numpad shaped" or "round", on the
+start screen and from the Menu button (desktop 0.1.3's hooks for a host's own
+Settings rows, android/context.c), where a tap changes it and the setting with
+it.
+
 ## Tidying
 
 The command drawer hides item commands with nothing to act on, using the same

@@ -1,4 +1,25 @@
-# Ormeq for Android 0.1.2
+# Ormeq for Android 0.1.3
+
+The game is Ormeq 0.1.3, as on Windows (its
+[release notes](https://github.com/EliteIntegrity/Ormeq/blob/v0.1.3/RELEASE_NOTES.md)),
+with a choice of d-pad.
+
+- From Ormeq 0.1.3: **Options and Help are on the Menu button.** The pause
+  menu now has the game's whole Options menu and the help index, which were
+  only under More.
+- **A square d-pad, if you prefer a numpad:** turn on **s_deco** in **Menu >
+  Settings > Touch** (or **s_deco (square/Numpad shaped)** in **Menu >
+  Options > Input**). The d-pad becomes nine keys, three by three, laid out
+  like a keyboard's numpad, with an arrow on each direction and Wait in the
+  middle. A press takes the key it lands on. In a menu only its up and down
+  keys work, and when aiming it turns orange with fire in the middle. The game
+  remembers your choice for every character, and the start screen shows it
+  too.
+
+Gameplay and saves are unchanged. 0.1.3 installs over 0.1.2 and earlier
+releases and keeps your characters.
+
+## Ormeq for Android 0.1.2
 
 Birth options fixes, with the game at Ormeq 0.1.2 as on Windows (its
 [release notes](https://github.com/EliteIntegrity/Ormeq/blob/v0.1.2/RELEASE_NOTES.md)).

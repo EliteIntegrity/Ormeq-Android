@@ -247,6 +247,7 @@ bool auto_map_area;
 bool limit_shop_prompts;
 bool numpad_as_cursorkey;    /* Use numpad keys as cursor key in editor mode */
 bool use_pack_slots;
+bool s_deco;    /* Square (numpad) d-pad on a touch screen */
 
 
 /*** Map Screen Options ***/

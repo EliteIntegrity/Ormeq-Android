@@ -28,17 +28,22 @@ works as it does on Windows: `?` for help, Escape for the pause menu.
 Without a keyboard, help is in **More**, under Game.
 
 - **The rail**, down the left edge (in the camera cut-out strip where there is
-  one): **Menu** (the pause menu and Settings), **Inv**, **Equip**, **More** (a
-  drawer of every command that has something to act on), **Quest** (the quest
-  journal), **Char** and **Log** (messages and Past Reckonings). Each closes
-  whatever screen is open first, and pressed again on its own screen it closes
-  that. The full map screen is in More, under Knowledge.
+  one): **Menu** (the pause menu: Settings, Options, Help, Save and quit),
+  **Inv**, **Equip**, **More** (a drawer of every command that has something to
+  act on), **Quest** (the quest journal), **Char** and **Log** (messages and
+  Past Reckonings). Each closes whatever screen is open first, and pressed
+  again on its own screen it closes that. The full map screen is in More, under
+  Knowledge.
 - **The d-pad**, bottom left: tap to step, hold to walk. Walking stops when you
-  lift your finger, the game asks something or the way is blocked; walking
-  into a monster attacks it. A press keeps the direction it started on until
-  you lift your finger: sliding your thumb does not turn it. Its centre is
-  **Wait**: tap to wait a turn, hold to keep waiting until a monster comes
-  into view or you are hurt; slide off the centre to cancel.
+  lift your finger, the game asks something or the way is blocked; walking into
+  a monster attacks it. A press keeps the direction it started on until you
+  lift your finger: sliding your thumb does not turn it. Its centre is
+  **Wait**: tap to wait a turn, hold to keep waiting until a monster comes into
+  view or you are hurt; slide off the centre to cancel. Prefer a numpad? Turn
+  on **s_deco** under **Menu > Settings > Touch** (it is also in **Menu >
+  Options > Input**): the d-pad becomes nine keys, three by three, with an
+  arrow on each direction and Wait in the middle. The game remembers your last
+  choice for every character.
 - **The cluster**, bottom right: one large button and three around it, offering
   what can be done now. Where you stand, the large button is Get, Down, Up,
   Enter, Open or Rest, with your ranged attack (Cast, Fire or Throw), **Look**

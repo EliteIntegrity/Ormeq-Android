@@ -2174,6 +2174,11 @@ option_type option_info[] =
 
     { &use_pack_slots,              TRUE,  OPT_PAGE_INPUT, 0, 3,
     "use_pack_slots",               "Retain backpack slot labels in other inventories" },
+
+    /* Android: the d-pad's shape (android/context.c). The last bit of the
+     * last set, clear of the ones the desktop takes next. */
+    { &s_deco,                      FALSE, OPT_PAGE_INPUT, 7, 31,
+    "s_deco",                       "s_deco (square/Numpad shaped)" },
     /*** Map Screen Options ***/
 
     { &theme_option,                TRUE,  OPT_PAGE_MAPSCREEN, 5, 5,

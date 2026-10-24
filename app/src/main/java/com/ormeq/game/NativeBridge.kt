@@ -21,6 +21,13 @@ object NativeBridge {
     /** Zoom the map by wheel notches: positive in, negative out. */
     @JvmStatic external fun zoom(notches: Int)
 
+    /**
+     * The square d-pad setting the app remembers (option s_deco): every
+     * character, new or loaded, keeps to it, until it is changed on the
+     * options page (android/context.c).
+     */
+    @JvmStatic external fun setSquarePad(square: Boolean)
+
     /** Grid pixels the controls cover along each edge; the map keeps the player clear of them. */
     @JvmStatic external fun setMapInsets(left: Int, top: Int, right: Int, bottom: Int)
 
