@@ -300,6 +300,86 @@ class TouchControlsView(context: Context) : View(context) {
         invalidate()
     }
 
+    // ---- A lettered list's lit row, kept here (android/context.c's choices) ----
+    /** Five ints a row: left, top, right and bottom in drawing pixels, and its key. */
+    private var choiceRows = IntArray(0)
+    private var focusRow = 0
+    private val focusRect = RectF()
+    /** The list's page and how many it has, as it says ("Page 1 of 2"); 0 for a list of one page. */
+    private var choicePage = 0
+    private var choicePages = 0
+    /** Where the lit row goes when the page just asked for comes: the first row, or the last (-1). */
+    private var pageFocus: Int? = null
+
+    /** The list and lit row before something else covered it, as an item's description does. */
+    private var coveredKeys = ""
+    private var coveredRow = 0
+
+    private fun keysOf(rows: IntArray) = String(CharArray(rows.size / 5) { rows[it * 5 + 4].toChar() })
+
+    fun setChoiceRows(data: IntArray) {
+        val page = data.getOrElse(0) { 0 }
+        val pages = data.getOrElse(1) { 0 }
+        val rows = if (data.size > 2) data.copyOfRange(2, data.size) else IntArray(0)
+        if (rows.contentEquals(choiceRows) && page == choicePage && pages == choicePages) return
+        val turned = page != choicePage
+        choicePage = page
+        choicePages = pages
+        // The same list drawn again keeps its lit row, as does one back from
+        // under what covered it (an item's description); another starts at the
+        // top -- and the next page at its top, the one before at its bottom.
+        val keys = keysOf(rows)
+        val wanted = pageFocus
+        when {
+            turned && wanted != null && rows.isNotEmpty() -> {
+                focusRow = if (wanted < 0) rows.size / 5 - 1 else wanted
+                pageFocus = null
+            }
+            rows.isEmpty() -> if (choiceCount() > 0) {
+                coveredKeys = keysOf(choiceRows)
+                coveredRow = focusRow
+            }
+            keys == keysOf(choiceRows) -> Unit
+            keys == coveredKeys -> focusRow = coveredRow
+            else -> focusRow = 0
+        }
+        choiceRows = rows
+        focusRow = focusRow.coerceIn(0, max(0, choiceCount() - 1))
+        fitPad()
+        if (!padShown) releasePad()
+        invalidate()
+    }
+
+    private fun choiceCount() = choiceRows.size / 5
+
+    /** A lettered list whose lit row is kept here, not by the game. */
+    private fun focusing() = gameContext.has(ContextFlags.ROW_FOCUS) && choiceCount() > 0
+
+    private fun moveFocus(delta: Int) {
+        // Past the end of a page of a longer list: the next page, or the one before.
+        if (focusRow + delta >= choiceCount() && choicePage in 1 until choicePages) {
+            pageFocus = 0
+            arrow(Keys.PAGE_DOWN)
+            return
+        }
+        if (focusRow + delta < 0 && choicePage > 1) {
+            pageFocus = -1
+            arrow(Keys.PAGE_UP)
+            return
+        }
+        val next = (focusRow + delta).coerceIn(0, choiceCount() - 1)
+        if (next == focusRow) return
+        focusRow = next
+        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        invalidate()
+    }
+
+    /** The lit row's key, after [prefix], as a tap on the row sends; just the prefix with no row lit. */
+    private fun chooseFocus(prefix: String) {
+        val keys = if (focusing()) prefix + choiceRows[focusRow * 5 + 4].toChar() else prefix
+        if (keys.isNotEmpty()) NativeBridge.pressKeys(keys, false)
+    }
+
     // Where the d-pad is drawn and takes touches: where it is laid out, or a
     // list's, fitted beside the menu's rows (fitPad).
     private var padCx = 0f
@@ -321,6 +401,9 @@ class TouchControlsView(context: Context) : View(context) {
         padR = padRadius
         padFits = true
         if (!dpad.list) return
+        // A shop's help runs along the bottom under its list, where the pad's
+        // corner is: beside the list, where there is room, it covers neither.
+        if (gameContext.mode == ControlMode.SHOP && fitBesideRows(padY + padRadius)) return
         // Before play no rail is drawn, and the pad may use its strip.
         val railFree = !railShown() && !rail.isEmpty && rail.right <= game.left + 1f
         val left = if (railFree) rail.left + dp(12f) else padX - padRadius
@@ -335,24 +418,51 @@ class TouchControlsView(context: Context) : View(context) {
             }
             r -= dp(4f)
         }
+        if (fitBesideRows(bottom)) return
         padFits = false
+    }
+
+    /**
+     * A list too long for the pad's corner, as a shop's stock is: the pad
+     * goes beside it instead, between its rows and the cluster, where there
+     * is room for one.
+     */
+    private fun fitBesideRows(bottom: Float): Boolean {
+        var rowsRight = -1f
+        for (i in 0 until menuRows.size / 4) rowsRight = max(rowsRight, drawing.left + menuRows[i * 4 + 2])
+        for (i in 0 until choiceCount()) rowsRight = max(rowsRight, drawing.left + choiceRows[i * 5 + 2])
+        if (rowsRight < 0f) return false
+        val clusterLeft = (quickButtons + primaryButton).filter { !it.rect.isEmpty }.minOfOrNull { it.rect.left } ?: return false
+        val gap = dp(12f)
+        val r = min(padRadius, (clusterLeft - rowsRight - 2 * gap) / 2)
+        if (r < dp(LIST_PAD_SMALLEST_DP)) return false
+        val cx = rowsRight + gap + r
+        val cy = bottom - r
+        if (coversRows(cx, cy, r)) return false
+        padCx = cx
+        padCy = cy
+        padR = r
+        return true
     }
 
     /** Whether a pad there would cover a row of the menu (but for the row's first cell, a margin). */
     private fun coversRows(cx: Float, cy: Float, r: Float): Boolean {
         val cell = metrics.cellWidth.toFloat()
-        for (i in 0 until menuRows.size / 4) {
-            val left = drawing.left + menuRows[i * 4] + cell
-            val top = drawing.top + menuRows[i * 4 + 1]
-            val right = drawing.left + menuRows[i * 4 + 2]
-            val bottom = drawing.top + menuRows[i * 4 + 3]
-            if (right <= left) continue
+        fun covers(rows: IntArray, at: Int): Boolean {
+            val left = drawing.left + rows[at] + cell
+            val top = drawing.top + rows[at + 1]
+            val right = drawing.left + rows[at + 2]
+            val bottom = drawing.top + rows[at + 3]
+            if (right <= left) return false
             // The point of the row nearest the pad's centre.
             val x = cx.coerceIn(left, right)
             val y = cy.coerceIn(top, bottom)
             val distance = if (dpad.square) max(abs(x - cx), abs(y - cy)) else hypot(x - cx, y - cy)
-            if (distance < r + dp(4f)) return true
+            return distance < r + dp(4f)
         }
+        for (i in 0 until menuRows.size / 4) if (covers(menuRows, i * 4)) return true
+        // A lettered list's rows, which a list that declares none is (a spell list, a shop's stock).
+        for (i in 0 until choiceCount()) if (covers(choiceRows, i * 5)) return true
         return false
     }
 
@@ -684,6 +794,7 @@ class TouchControlsView(context: Context) : View(context) {
             drawDrawer(canvas)
             return
         }
+        if (focusing()) drawFocus(canvas)
         // A look card keeps to the part of the map the controls leave clear
         // (change 0006), so nothing here makes way for it.
         if (padShown) drawPad(canvas)
@@ -886,6 +997,19 @@ class TouchControlsView(context: Context) : View(context) {
         canvas.scale(length, length)
         canvas.drawPath(arrowPath, fill)
         canvas.restore()
+    }
+
+    /** A lettered list's lit row: a bar over it, as a menu lights its row. */
+    private fun drawFocus(canvas: Canvas) {
+        val at = focusRow * 5
+        focusRect.set(
+            drawing.left + choiceRows[at] - dp(3f), drawing.top + choiceRows[at + 1],
+            drawing.left + choiceRows[at + 2] + dp(3f), drawing.top + choiceRows[at + 3],
+        )
+        fill.color = Color.argb(70, 110, 190, 110)
+        canvas.drawRoundRect(focusRect, dp(3f), dp(3f), fill)
+        stroke.color = Color.argb(190, 150, 215, 150)
+        canvas.drawRoundRect(focusRect, dp(3f), dp(3f), stroke)
     }
 
     /** [faint]: a light veil and an edge, the label outlined to read over the map. */
@@ -1173,12 +1297,14 @@ class TouchControlsView(context: Context) : View(context) {
         }
         val line = max(dp(SWIPE_LINE_MIN_DP), metrics.cellHeight.toFloat())
         val row = ControlLayouts.dragMovesRow(gameContext)
+        // A lettered list's lit row is kept here: the drag moves it, and the game hears nothing.
+        val focus = focusing()
         while (abs(y - swipeY) > line && abs(dy) > abs(dx)) {
             if (y < swipeY) {
-                arrow(if (look) ']' else if (row) Keys.UP else Keys.DOWN)
+                if (focus) moveFocus(-1) else arrow(if (look) ']' else if (row) Keys.UP else Keys.DOWN)
                 swipeY -= line
             } else {
-                arrow(if (look) '[' else if (row) Keys.DOWN else Keys.UP)
+                if (focus) moveFocus(1) else arrow(if (look) '[' else if (row) Keys.DOWN else Keys.UP)
                 swipeY += line
             }
         }
@@ -1353,6 +1479,7 @@ class TouchControlsView(context: Context) : View(context) {
                 NativeBridge.itemAction(action.key)
             }
             Action.FocusMore -> openSheet()
+            is Action.ChooseFocus -> chooseFocus(action.prefix)
         }
     }
 
@@ -1489,6 +1616,11 @@ class TouchControlsView(context: Context) : View(context) {
      * In a menu, the arrow key, which moves its lit row.
      */
     private fun step(digit: Int) {
+        // A lettered list's lit row is kept here: up and down move it.
+        if (dpad.list && focusing()) {
+            moveFocus(if (digit == 8) -1 else 1)
+            return
+        }
         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         val keys = if (dpad.list) (if (digit == 8) Keys.UP else Keys.DOWN).toString() else digit.toString()
         NativeBridge.pressKeys(keys, false)

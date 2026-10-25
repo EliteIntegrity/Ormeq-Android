@@ -72,11 +72,14 @@ Without a keyboard, help is in **More**, under Game.
   cluster has **Type…** for the on-screen keyboard; **Keyboard** is also in the
   More drawer.
 - **Menus and lists** always have one choice highlighted, starting on your
-  current one. **OK** takes it, and the d-pad's up and down move the
-  highlight, as does a drag: the highlight follows your finger. Or tap a
-  choice to take it at once. In character creation, hold a choice for its
-  help; on the summary and stats pages, **OK** goes on. On pages of options,
-  Birth options among them, swipe sideways to change the highlighted one.
+  current one: menus, item lists, spell lists, shops and a building's services.
+  **OK** takes it, and the d-pad's up and down move the highlight, as does a
+  drag: the highlight follows your finger, and runs on to a list's next page.
+  Or tap a choice, anywhere along its row, to take it at once. In a shop,
+  **Buy** takes the highlighted item and **Info** describes it. In character
+  creation, hold a choice for its help; on the summary and stats pages, **OK**
+  goes on. On pages of options, Birth options among them, swipe sideways to
+  change the highlighted one.
 - **Screens of text**: drag to scroll (the text follows your finger), swipe
   sideways to turn the page. PgUp, PgDn and Back are in the cluster, and
   **OK** closes the page.

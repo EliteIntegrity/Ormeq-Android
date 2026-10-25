@@ -69,7 +69,10 @@ enum context_flag {
     /* A page of options, whose values left and right change. */
     FLAG_OPTION_PAGE = 131072,
     /* The d-pad is the square one, a numpad (option s_deco, change 0016). */
-    FLAG_SQUARE_PAD = 262144
+    FLAG_SQUARE_PAD = 262144,
+    /* A lettered list with no lit row of its own: the controls light one
+     * (find_choices). */
+    FLAG_ROW_FOCUS = 524288
 };
 
 /* ---- What the game is waiting for ------------------------------------- */
@@ -442,6 +445,155 @@ static bool touch_settings_key(int key)
     return TRUE;
 }
 
+/*
+ * A lettered list on screen -- items, spells, a shop's stock, a building's
+ * services -- that lights no row of its own, as the game's menus and cursors
+ * do: the controls light one, which the d-pad and a drag move and OK takes
+ * (FLAG_ROW_FOCUS), and a tap anywhere along a row takes it (tapped_label).
+ * Read off the screen, as a tap's label always was (ormeq_label_at): "a)"
+ * labels down a column. An item, spell or shop list may be one row long;
+ * elsewhere it takes two, so that a stray "a)" in some text is not a list.
+ * Column by column, top to bottom, as a long spell list runs on in a second
+ * column.
+ */
+#define CHOICES_MAX 64
+static struct { int x, y, end; char key; } choices[CHOICES_MAX];
+static int choice_count;
+/* Its page and how many there are, as the list says ("Page 1 of 2"); 0 if
+ * it has one. */
+static int choice_page, choice_pages;
+
+static void find_page(void)
+{
+    char line[256];
+    int x, y, cols = MIN(sdl3.cols, (int)sizeof(line) - 1);
+
+    choice_page = choice_pages = 0;
+    for (y = 0; y < sdl3.rows; y++) {
+        cptr at;
+
+        for (x = 0; x < cols; x++) {
+            byte a;
+            char c;
+
+            if (Term_what(x, y, &a, &c) || !c) c = ' ';
+            line[x] = c;
+        }
+        line[cols] = '\0';
+        at = strstr(line, "Page ");
+        if (at && sscanf(at, "Page %d of %d", &choice_page, &choice_pages) == 2) return;
+        choice_page = choice_pages = 0;
+    }
+}
+
+/* An "a)" label at (x, y): a letter, ")", and a space or "|" (or the edge of
+ * the screen) before it -- a letter, as for a tap (ormeq_label_at): "(Page 2
+ * of 2)" is no row. */
+static bool label_cell(int x, int y, char *key)
+{
+    byte a;
+    char c, close, before = ' ';
+
+    if (x + 1 >= sdl3.cols) return FALSE;
+    if (Term_what(x, y, &a, &c) || Term_what(x + 1, y, &a, &close)) return FALSE;
+    if (!isalpha((unsigned char)c) || close != ')') return FALSE;
+    if (x > 0 && !Term_what(x - 1, y, &a, &before) && before && before != ' ' && before != '|')
+        return FALSE;
+    *key = c;
+    return TRUE;
+}
+
+/* The questions whose answer is a row of the list on screen. */
+static bool list_prompt(void)
+{
+    return ui_screen_prompt_within(UI_PROMPT_ITEM) || ui_screen_prompt_within(UI_PROMPT_SPELL) ||
+        ui_screen_prompt_within(UI_PROMPT_MENU) || ui_screen_prompt_within(UI_PROMPT_SHOP) ||
+        ui_screen_prompt_within(UI_PROMPT_HOME);
+}
+
+static void find_choices(int mode, int flags)
+{
+    static struct { int x, y; char key; } found[CHOICES_MAX * 2];
+    int n = 0, max = (int)(sizeof(found) / sizeof(found[0]));
+    int least, i, j, x, y;
+
+    choice_count = 0;
+    switch (mode) {
+    case MODE_ITEM:
+    case MODE_SPELL:
+    case MODE_SHOP:
+        least = 1;
+        break;
+    case MODE_MENU:
+    case MODE_KEY:
+        least = list_prompt() ? 1 : 2;
+        break;
+    default:
+        return;
+    }
+    if (flags & (FLAG_BIRTH | FLAG_MENU_LIST | FLAG_ROW_CURSOR | FLAG_TEXT_PAGE | FLAG_OPTION_PAGE)) return;
+    /* An item's description is up, not the list (items.c), or something over
+     * the list waits for any key (a shop's description of a ware). */
+    if (ormeq_items_focused()) return;
+    if (screen_shows("Any Key") || screen_shows("any key") || screen_shows("Tap anywhere to go back")) return;
+
+    /* Row 0 is the message line: a question there is no list. */
+    for (y = 1; y < sdl3.rows && n < max; y++) {
+        for (x = 0; x + 1 < sdl3.cols && n < max; x++) {
+            char key;
+
+            if (!label_cell(x, y, &key)) continue;
+            found[n].x = x;
+            found[n].y = y;
+            found[n].key = key;
+            n++;
+            x++;
+        }
+    }
+    for (x = 0; x < sdl3.cols && choice_count < CHOICES_MAX; x++) {
+        int count = 0;
+
+        for (i = 0; i < n; i++) if (found[i].x == x) count++;
+        if (count < least) continue;
+        for (i = 0; i < n && choice_count < CHOICES_MAX; i++) {
+            int limit = sdl3.cols, end = x + 1;
+
+            if (found[i].x != x) continue;
+            /* The row runs to the end of its text, short of a label beside it. */
+            for (j = 0; j < n; j++) {
+                if (found[j].y == found[i].y && found[j].x > x && found[j].x < limit) limit = found[j].x;
+            }
+            for (j = x + 2; j < limit; j++) {
+                byte a;
+                char c;
+
+                if (!Term_what(j, found[i].y, &a, &c) && c && c != ' ') end = j;
+            }
+            choices[choice_count].x = x;
+            choices[choice_count].y = found[i].y;
+            choices[choice_count].end = end;
+            choices[choice_count].key = found[i].key;
+            choice_count++;
+        }
+    }
+    if (choice_count) find_page();
+}
+
+/* The choice on a tapped row: the nearest to the left of the tap, or the
+ * row's first, so that a tap anywhere along the row takes it. 0 if none. */
+static int row_choice_at(int col, int row)
+{
+    int i, best = -1, first = -1;
+
+    for (i = 0; i < choice_count; i++) {
+        if (choices[i].y != row) continue;
+        if (first < 0 || choices[i].x < choices[first].x) first = i;
+        if (choices[i].x <= col + 1 && (best < 0 || choices[i].x > choices[best].x)) best = i;
+    }
+    if (best < 0) best = first;
+    return best < 0 ? 0 : (unsigned char)choices[best].key;
+}
+
 static void current_context(int *mode, int *primary, int *flags, int *detail, cptr *keys)
 {
     bool options = option_page();
@@ -469,6 +621,8 @@ static void current_context(int *mode, int *primary, int *flags, int *detail, cp
     } else if (row_cursor()) {
         *flags |= FLAG_ROW_CURSOR;
     }
+    find_choices(*mode, *flags);
+    if (choice_count > 0) *flags |= FLAG_ROW_FOCUS;
     if (!in_play()) return;
 
     *flags |= FLAG_IN_PLAY;
@@ -567,6 +721,48 @@ static void publish_rows(void)
     ormeq_call_activity("onMenuRows", "([I)V", &rows_method, call_rows, rows);
 }
 
+static void call_ints(JNIEnv *env, jobject activity, jmethodID method, void *data)
+{
+    int *ints = data;   /* ints[0], then that many values */
+    jintArray array = (*env)->NewIntArray(env, ints[0]);
+
+    if (!array) return;
+    (*env)->SetIntArrayRegion(env, array, 0, ints[0], (const jint *)(ints + 1));
+    (*env)->CallVoidMethod(env, activity, method, array);
+    (*env)->DeleteLocalRef(env, array);
+}
+
+/*
+ * The rows of a lettered list the controls light (find_choices): its page and
+ * how many there are, then five ints a row: left, top, right and bottom in
+ * drawing pixels, and the row's key. Sent before the context that says to
+ * light one.
+ */
+static void publish_choices(void)
+{
+    static jmethodID choices_method;
+    static int last[3 + CHOICES_MAX * 5] = { -1 };
+    int ints[3 + CHOICES_MAX * 5];
+    int i, ox, oy;
+
+    sdl3_grid_origin(&ox, &oy);
+    ints[0] = 2 + choice_count * 5;
+    ints[1] = choice_count ? choice_page : 0;
+    ints[2] = choice_count ? choice_pages : 0;
+    for (i = 0; i < choice_count; i++) {
+        int *c = ints + 3 + i * 5;
+
+        c[0] = ox + choices[i].x * sdl3.cell_w;
+        c[1] = oy + choices[i].y * sdl3.cell_h;
+        c[2] = ox + (choices[i].end + 1) * sdl3.cell_w;
+        c[3] = oy + (choices[i].y + 1) * sdl3.cell_h;
+        c[4] = (unsigned char)choices[i].key;
+    }
+    if (memcmp(ints, last, sizeof(int) * (1 + ints[0])) == 0) return;
+    memcpy(last, ints, sizeof(int) * (1 + ints[0]));
+    ormeq_call_activity("onChoiceRows", "([I)V", &choices_method, call_ints, ints);
+}
+
 static void publish_context(void)
 {
     static int last_mode = -1, last_primary = -1, last_flags = -1, last_detail = -1;
@@ -580,6 +776,7 @@ static void publish_context(void)
     if (!SDL_IsMainThread()) return;
 
     current_context(&args.mode, &args.primary, &args.flags, &args.detail, &args.keys);
+    publish_choices();
     if (args.mode == MODE_MAP) {
         ormeq_items_at_map();
         ormeq_items_publish_available();
@@ -938,6 +1135,15 @@ static int label_at(int col, int row)
     return ormeq_label_at(col, row, NULL);
 }
 
+/* A tapped list row's key: anywhere along a lit list's row, else the label
+ * to the left of the tap. */
+static int tapped_label(int col, int row)
+{
+    int key = row_choice_at(col, row);
+
+    return key ? key : label_at(col, row);
+}
+
 /*
  * The stat rows of character creation are labelled "s/S)": the small letter
  * lowers the stat and the capital raises it. Returns the small letter of such
@@ -1213,7 +1419,7 @@ static bool click_hook(int col, int row, float px_in, float py_in, int button)
 
     case UI_PROMPT_SHOP:
     case UI_PROMPT_HOME:
-        key = label_at(col, row);
+        key = tapped_label(col, row);
         if (key) {
             /* At the counter a letter means nothing: buy (or take) that row.
              * Inside "Buy which item?" the letter is the answer. */
@@ -1229,7 +1435,7 @@ static bool click_hook(int col, int row, float px_in, float py_in, int button)
             Term_keypress(ESCAPE);
             return TRUE;
         }
-        key = label_at(col, row);
+        key = tapped_label(col, row);
         if (key) Term_keypress(key);
         return TRUE;
 
@@ -1237,7 +1443,7 @@ static bool click_hook(int col, int row, float px_in, float py_in, int button)
     case UI_PROMPT_MENU:
     case UI_PROMPT_KEY:
     case UI_PROMPT_CARD:    /* a questgiver's card: its own buttons */
-        key = label_at(col, row);
+        key = tapped_label(col, row);
         if (key) Term_keypress(key);
         return TRUE;
 
@@ -1258,7 +1464,7 @@ static bool click_hook(int col, int row, float px_in, float py_in, int button)
             Term_keypress(toupper(key));
             return TRUE;
         }
-        key = label_at(col, row);
+        key = tapped_label(col, row);
         if (key) Term_keypress(key);
         else move_list_cursor(col, row);
         return TRUE;

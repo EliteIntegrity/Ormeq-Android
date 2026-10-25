@@ -200,6 +200,15 @@ class OrmeqActivity : SDLActivity() {
         runOnUiThread { controls?.setMenuRows(rows) }
     }
 
+    /**
+     * Called by the game: a lettered list's page and page count, then five
+     * ints a row (left, top, right, bottom; drawing pixels; key).
+     */
+    @Suppress("unused")
+    fun onChoiceRows(rows: IntArray) {
+        runOnUiThread { controls?.setChoiceRows(rows) }
+    }
+
     /** Back closes the command drawer; otherwise SDL passes it to the game as Escape. */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BACK && controls?.drawerIsOpen == true) {

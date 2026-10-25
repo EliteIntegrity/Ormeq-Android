@@ -72,6 +72,12 @@ object ContextFlags {
     const val OPTION_PAGE = 131072
     /** The d-pad is the square one, laid out like a numpad (the game's option s_deco). */
     const val SQUARE_PAD = 262144
+    /**
+     * A lettered list -- items, spells, a shop's stock, a building's services
+     * -- with no lit row of its own: the controls light one (android/context.c
+     * sends its rows), which the d-pad and a drag move and OK takes.
+     */
+    const val ROW_FOCUS = 524288
 }
 
 /** ITEM detail bits: what the item prompt offers (keep in step with android/ormeq-android.h). */
@@ -128,6 +134,8 @@ sealed interface Action {
     data object CycleRows : Action
     /** Walk to the monster in focus, as a tap used to. */
     data object WalkToFocus : Action
+    /** The lit row of a lettered list: its key, after [prefix] (a shop's Buy, p), as a tap on it sends. */
+    data class ChooseFocus(val prefix: String = "") : Action
 }
 
 /** A monster tapped across the map: now the target, and the cluster acts on it. */
@@ -223,6 +231,8 @@ object ControlLayouts {
         // A menu, and the race and class lists: up and down move the lit
         // row, which OK chooses (Ammerow's way; android/context.c lights one).
         movesLitRow(context) -> Dpad(visible = true, list = true)
+        // A lettered list, whose lit row the controls keep: the same.
+        context.has(ContextFlags.ROW_FOCUS) -> Dpad(visible = true, list = true)
         else -> modeDpad(context)
     }.copy(square = context.has(ContextFlags.SQUARE_PAD))
 
@@ -247,7 +257,7 @@ object ControlLayouts {
      */
     fun swipes(context: GameContext) = context.mode == ControlMode.MENU || context.mode == ControlMode.NONE ||
         context.mode == ControlMode.LOOK || context.mode == ControlMode.RECKONING ||
-        context.mode == ControlMode.QUEST_CARD
+        context.mode == ControlMode.QUEST_CARD || context.has(ContextFlags.ROW_FOCUS)
 
     /**
      * A vertical drag moves a lit row, which follows the finger as it goes
@@ -255,7 +265,8 @@ object ControlLayouts {
      * lists, and the other lists whose arrows move a lit row. Elsewhere the
      * drag scrolls, and the text follows the finger.
      */
-    fun dragMovesRow(context: GameContext) = movesLitRow(context) || context.has(ContextFlags.ROW_CURSOR)
+    fun dragMovesRow(context: GameContext) = movesLitRow(context) || context.has(ContextFlags.ROW_CURSOR) ||
+        context.has(ContextFlags.ROW_FOCUS)
 
     /**
      * And a sideways swipe turns the page; in Look it goes to the next or the
@@ -329,7 +340,9 @@ object ControlLayouts {
         return Cluster(actions[0], listOf(actions.getOrNull(1), actions.getOrNull(2), last))
     }
 
-    fun cluster(context: GameContext): Cluster = when (context.mode) {
+    fun cluster(context: GameContext): Cluster = if (context.has(ContextFlags.ROW_FOCUS)) {
+        listCluster(context)
+    } else when (context.mode) {
         ControlMode.MAP -> {
             val canCast = context.has(ContextFlags.CAN_CAST)
             val canFire = context.has(ContextFlags.CAN_FIRE)
@@ -414,6 +427,40 @@ object ControlLayouts {
                 Cluster(menuOk(context), listOf(back, key("PgUp", Keys.PAGE_UP), key("PgDn", Keys.PAGE_DOWN)))
             context.has(ContextFlags.BIRTH) -> birthCluster(context)
             else -> Cluster(menuOk(context), listOf(back, null, null))
+        }
+    }
+
+    /**
+     * A lettered list whose lit row the controls keep: OK takes it, as a tap
+     * on it would, with Back beside it and the prompt's own keys after. At a
+     * shop's counter, where a tap on a row buys it, Buy (Take at home) takes
+     * the lit row and Info examines it.
+     */
+    private fun listCluster(context: GameContext): Cluster {
+        val choose = Command("OK", Action.ChooseFocus())
+        return when (context.mode) {
+            ControlMode.ITEM -> Cluster(
+                choose,
+                listOf(
+                    back,
+                    if (context.detail and ItemPrompt.FLOOR != 0) key("Floor", '-') else null,
+                    if (context.detail and ItemPrompt.TABS != 0) key("Tab", '/') else null,
+                ),
+            )
+            ControlMode.SPELL -> Cluster(choose, listOf(back, key("Browse", '?'), null))
+            ControlMode.KEY -> Cluster(choose, listOf(back, type, null))
+            ControlMode.SHOP -> {
+                val home = context.detail == 1
+                Cluster(
+                    Command(if (home) "Take" else "Buy", Action.ChooseFocus("p")),
+                    listOf(
+                        key("Leave", Keys.ESCAPE),
+                        key(if (home) "Stash" else "Sell", 's'),
+                        Command("Info", Action.ChooseFocus("x")),
+                    ),
+                )
+            }
+            else -> Cluster(choose, listOf(back, key("PgUp", Keys.PAGE_UP), key("PgDn", Keys.PAGE_DOWN)))
         }
     }
 

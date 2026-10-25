@@ -1,4 +1,23 @@
-# Ormeq for Android 0.1.3
+# Ormeq for Android 0.1.3-android.1
+
+An Android-only update: the game is still Ormeq 0.1.3, as on Windows. It
+brings the menus' controls to every list, as a player asked.
+
+- **Every list has a highlighted choice.** Item lists (wear, read, throw,
+  drop and the rest), spell lists, shops and a building's services now work
+  like the menus: one choice is highlighted, the d-pad's up and down or a
+  drag move it, and **OK** takes it. Tapping a choice still takes it at once,
+  now anywhere along its row.
+- **Shops:** **Buy** buys the highlighted item and **Info** describes it.
+  Moving past the last item turns to the next page of stock, which could not
+  be reached by touch before.
+- Lists that already highlight their own choice, such as the quest journal,
+  are unchanged.
+
+Gameplay and saves are unchanged. It installs over 0.1.3 and earlier
+releases and keeps your characters.
+
+## Ormeq for Android 0.1.3
 
 The game is Ormeq 0.1.3, as on Windows (its
 [release notes](https://github.com/EliteIntegrity/Ormeq/blob/v0.1.3/RELEASE_NOTES.md)),

@@ -165,6 +165,27 @@ Info (Tab) where it shows the race and class summary. An OK that did nothing,
 on the first page in 0.1.0, made the game look frozen; one missing, in
 0.1.1, made a player tap rows they would rather have chosen with OK.
 
+The game's other lists light no row at all: an item prompt (Wear, Read,
+Throw, Drop and the rest, a shop's Sell, the home's Stash), a spell list, a
+shop's stock, a building's services, the race powers. On the desktop a letter
+or a click chooses there. Android lights their first row itself (android/
+context.c's `FLAG_ROW_FOCUS`): it reads the "a)" labels off the screen, as a
+tap always has, and sends the rows; TouchControlsView keeps the lit row and
+draws it, the d-pad's up and down and a drag move it, and OK sends its letter,
+as a tap on it would. At a shop's counter Buy (Take at home) takes the lit
+row and Info examines it. Past a page's last row the lit row runs on to the
+next page's first (PgDn), and back from its first to the page before's last,
+as the list says which page it is on ("Page 1 of 2"): until then a shop's
+second page could not be reached by touch. The same list drawn again keeps
+its lit row, as does one back from under an item's description or a
+building's dialog. A tap anywhere along a lit list's row takes it. Only
+letters are labels ("(Page 2 of 2)" is no row), a list outside a prompt needs
+two of them in a column, and none is looked for in character creation, a
+menu, a page of text or options, or the lists that light their own row.
+A shop's pad goes beside the list, clear of the help along the bottom; a
+list too long for the pad's corner has it beside the list too, where there
+is room (a small phone has none: drag, tap and OK still work).
+
 ## One press, one direction
 
 A press on the d-pad keeps the direction it lands on until it is lifted, as
